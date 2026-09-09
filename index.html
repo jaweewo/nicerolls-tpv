@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>NiceRolls TPV v13</title>
+<title>NiceRolls TPV v0.9.0 (beta)</title>
 <style>
 /* ── RESET & BASE ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -378,7 +378,7 @@ th{color:#888;font-size:10px;font-weight:700}
 <!-- HEADER -->
 <header>
   <div class="logo">NR</div>
-  <div class="brand">NiceRolls TPV <small>v13</small></div>
+  <div class="brand">NiceRolls TPV <small>v0.9.0 beta</small></div>
   <div class="hmet"><span class="hmet-label">Pedidos</span><span class="hmet-val" id="m-count">0</span></div>
   <div class="hmet"><span class="hmet-label">Efectivo</span><span class="hmet-val green" id="m-ef">0,00 €</span></div>
   <div class="hmet"><span class="hmet-label">Tarjeta</span><span class="hmet-val blue" id="m-tj">0,00 €</span></div>
@@ -989,7 +989,73 @@ const stockTracked=p=>p&&p.trackStock===true;
 const stockValue=p=>Math.max(0,Number(p?.stock||0));
 const stockLowAt=p=>Math.max(0,Number(p?.lowStockAt??5));
 const stockBlocked=p=>stockTracked(p)&&stockValue(p)<=0;
-const unavailable=p=>!!p?.soldOut||stockBlocked(p);
+// Mapa: qué opciones de combo corresponden a qué id de producto en catálogo
+// Se usa para filtrar opciones cuando el producto base está oculto/agotado
+const COMBO_OPTION_MAP={
+  // Horcus
+  'Horcus Roll':'horcus',
+  'Horcus Fit':'horcus_fit',
+  // FitRolls
+  'Chocolate':'fit_chocolate',
+  'Vainilla y Canela':'fit_vainilla',
+  'Vainilla & Canela':'fit_vainilla',
+  // Premium
+  'Kinder':'premium_kinder',
+  'Pistacho':'premium_pistacho',
+  'Cheesecake':'premium_cheesecake',
+  // Cafés
+  'Solo':'solo',
+  'Con leche':'leche',
+  'Cortado':'cortado',
+  'Bombón':'bombon',
+  'Manchado':'manchado',
+  // Bebidas/refrescos
+  'Coca-Cola':'drink0',
+  'Coca-Cola Zero':'drink1',
+  'Coca-Cola Zero Zero':'drink2',
+  'Nestea':'drink3',
+  'Aquarius':'drink4',
+  'Zumo melocotón':'drink5',
+  'Fanta Naranja':'drink6',
+  'Fanta Limón':'drink7',
+  'Agua grande 1,5 L':'agua15',
+  // Red Bull
+  'Original':'rb',
+  'Sugar Free':'rbsf'
+};
+
+// Devuelve si una opción de combo está disponible (el producto que representa existe, está visible y tiene stock)
+function comboOptionAvailable(optionLabel){
+  const pid=COMBO_OPTION_MAP[optionLabel];
+  if(!pid)return true; // opciones sin mapeo (ej. "Normal"/"Descafeinado") siempre disponibles
+  const p=catalog.find(x=>x.id===pid);
+  if(!p)return false;
+  if(p.enabled===false)return false;
+  if(p.soldOut)return false;
+  if(stockBlocked(p))return false;
+  return true;
+}
+
+// Filtra las opciones de un mod de combo contra el catálogo en tiempo real
+// Devuelve las opciones válidas (o todas si no tienen mapeo a producto)
+function filterComboModOptions(options){
+  return (options||[]).filter(o=>comboOptionAvailable(o));
+}
+
+// Comprueba si un combo tiene al menos una opción válida en TODOS sus mods con opciones mapeadas
+// (mods sin mapeo, como "Tipo de café", siempre se consideran válidos)
+function comboHasValidOptions(p){
+  if(!p||!Array.isArray(p.mods)||!p.mods.length)return true;
+  return p.mods.every(m=>{
+    const filtered=filterComboModOptions(m.options);
+    // Si ninguna opción del mod tiene mapeo a catálogo, el mod siempre es válido
+    const hasMappedOptions=(m.options||[]).some(o=>COMBO_OPTION_MAP[o]!==undefined);
+    if(!hasMappedOptions)return true;
+    return filtered.length>0;
+  });
+}
+
+const unavailable=p=>!!p?.soldOut||stockBlocked(p)||!comboHasValidOptions(p);
 
 function save(){localStorage.nr_store_v3=JSON.stringify(store);localStorage.nr_catalog_v3=JSON.stringify(catalog);localStorage.nr_sales_v3=JSON.stringify(sales);localStorage.nr_orders_v3=JSON.stringify(orders);localStorage.nr_parked_v3=JSON.stringify(parked)}
 function toast(s){let t=document.getElementById('toast');t.textContent=s;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),1600)}
@@ -1049,10 +1115,11 @@ function renderRightFin(){
 function render(){
   let cs=cats();if(!cs.includes(currentCat))currentCat=cs[0]||'';
   document.getElementById('cats').innerHTML=cs.map(c=>`<button class="cat-btn${c===currentCat?' on':''}" onclick="currentCat='${c.replaceAll("'","\\'")}';render()">${esc(c)}</button>`).join('');
-  document.getElementById('quick').innerHTML=catalog.filter(p=>p.quick&&p.enabled!==false).slice(0,5).map(p=>`<button class="${unavailable(p)?'sold':''}" onclick="pick('${p.id}')">${esc(p.name)}<small>${unavailable(p)?(stockBlocked(p)?'STOCK 0':'AGOTADO'):money(p.price)}</small>${stockTracked(p)&&!unavailable(p)?`<small>${stockValue(p)} uds.</small>`:''}</button>`).join('');
+  const unavailTag=p=>stockBlocked(p)?'STOCK 0':!comboHasValidOptions(p)?'NO DISP.':'AGOTADO';
+  document.getElementById('quick').innerHTML=catalog.filter(p=>p.quick&&p.enabled!==false).slice(0,5).map(p=>`<button class="${unavailable(p)?'sold':''}" onclick="pick('${p.id}')">${esc(p.name)}<small>${unavailable(p)?unavailTag(p):money(p.price)}</small>${stockTracked(p)&&!unavailable(p)?`<small>${stockValue(p)} uds.</small>`:''}</button>`).join('');
   document.getElementById('products').innerHTML=catalog.filter(p=>p.cat===currentCat&&p.enabled!==false).map(p=>`
     <button class="prod${unavailable(p)?' sold':''}" onclick="pick('${p.id}')">
-      ${unavailable(p)?`<span class="tag">${stockBlocked(p)?'STOCK 0':'AGOTADO'}</span>`:(p.cat==='Premium'?'<span class="tag seasonal">Temporada</span>':'')}
+      ${unavailable(p)?`<span class="tag">${unavailTag(p)}</span>`:(p.cat==='Premium'?'<span class="tag seasonal">Temporada</span>':'')}
       <div><b>${esc(p.name)}</b><small>${esc(p.desc||'')}</small>${allergenCard(p)}${stockBadge(p)}</div>
       <span class="price">${money(p.price)}</span>
     </button>`).join('');
@@ -1067,16 +1134,29 @@ function pick(id){
   let p=catalog.find(x=>x.id===id);if(!p)return;
   if(p.soldOut){toast('Producto agotado');return}
   if(stockBlocked(p)){toast(`${p.name}: no queda stock`);return}
+  if(!comboHasValidOptions(p)){toast(`${p.name}: no disponible (ingredientes no disponibles)`);return}
   pp=p;sel={};let mods=clone(p.mods||[]);
   if(p.coffee)mods.push({label:'Tipo de café',options:['Normal','Descafeinado']});
   if(p.creamPrice!==undefined){let v=Number(p.creamPrice);if(p.id==='pack6_mini'){let opts=PACK6_CREAMS;mods.push({label:`Cremas para el Pack 6 · Original gratis · otras +${money(v)} cada una`,multi:true,pack6Original:true,options:opts,priceMap:Object.fromEntries(opts.map(c=>[c,c==='Original (gratis)'?0:v]))})}else{mods.push({label:`Cremas extra (+${money(v)} cada una)`,multi:true,options:CREAMS,priceMap:Object.fromEntries(CREAMS.map(c=>[c,c==='Sin crema extra'?0:v]))})}}
   if(p.packCreamPrice!==undefined){let v=Number(p.packCreamPrice);mods.push({label:`Cremas extra para los 2 (+${money(v)} cada una)`,multi:true,options:CREAMS,priceMap:Object.fromEntries(CREAMS.map(c=>[c,c==='Sin crema extra'?0:v]))})}
+  // Filtrado dinámico de opciones de combo contra catálogo en tiempo real
+  mods=mods.map(m=>{
+    if(m.multi||!m.options)return m; // cremas/pack6 no se filtran por catálogo
+    const allOpts=m.options;
+    const filteredOpts=filterComboModOptions(allOpts);
+    const hiddenCount=allOpts.length-filteredOpts.length;
+    return {...m,options:filteredOpts,_hiddenCount:hiddenCount};
+  });
+  // Bloquear si algún mod obligatorio quedó sin opciones
+  const emptyMod=mods.find(m=>!m.multi&&Array.isArray(m.options)&&m.options.length===0);
+  if(emptyMod){toast(`${p.name}: no disponible (sin opciones en "${emptyMod.label}")`);return;}
   if(!mods.length){push(p,[],0);return}
   pp._mods=mods;document.getElementById('modTitle').textContent=p.name;
   mods.forEach((m,i)=>{if(m.multi)sel[i]=m.pack6Original?['Original (gratis)']:[]});
   document.getElementById('modBody').innerHTML=mods.map((m,i)=>`
     <div style="margin:12px 0">
       <b>${esc(m.label)}</b>
+      ${(m._hiddenCount||0)>0?`<span style="font-size:10px;color:#c0392b;margin-left:6px">(${m._hiddenCount} opción${m._hiddenCount>1?'es':''} no disponible${m._hiddenCount>1?'s':''})</span>`:''}
       ${m.multi?'<span class="multihelp">Puedes elegir varias. La Original es gratis en el Pack 6.</span>':''}
       <div class="opts" style="margin-top:6px">
         ${m.options.map(o=>`<button class="opt ${m.multi&&((!m.pack6Original&&o==='Sin crema extra')||(m.pack6Original&&o==='Original (gratis)'))?'none-sel':''}" id="o_${i}_${encodeURIComponent(o)}" onclick="${m.multi?`chooseMulti(${i},'${o.replaceAll("'","\\'")}')`:`choose(${i},'${o.replaceAll("'","\\'")}')`}">${esc(o)}</button>`).join('')}
