@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>NiceRolls TPV v0.9.1 (beta)</title>
+<title>NiceRolls TPV v0.9.2 (beta)</title>
 <style>
 /* ── RESET & BASE ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -99,15 +99,26 @@ header{background:#1a2e5a;display:flex;align-items:center;gap:8px;padding:0 12px
 /* product grid */
 .productswrap{flex:1;overflow-y:auto;padding:8px}
 .products{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-.prod{border:0.5px solid #d8cfc5;background:#fff;border-radius:12px;padding:10px;min-height:90px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;position:relative;transition:border-color .15s}
+.prod{border:0.5px solid #d8cfc5;background:#fff;border-radius:12px;padding:0;min-height:90px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;position:relative;transition:border-color .15s;overflow:hidden}
 .prod:hover:not(.sold){border-color:#1a2e5a}
 .prod:active:not(.sold){transform:scale(.97)}
 .prod.sold{opacity:.4;filter:grayscale(1)}
+.prod-img{width:100%;height:90px;object-fit:cover;display:block;border-radius:12px 12px 0 0}
+.prod-img-placeholder{width:100%;height:90px;background:linear-gradient(135deg,#f0ebe3 0%,#e8dfd4 100%);display:flex;align-items:center;justify-content:center;font-size:22px;border-radius:12px 12px 0 0;color:#c8b8a2}
+.prod-body{padding:8px 10px 10px;flex:1;display:flex;flex-direction:column;justify-content:space-between}
 .prod b{font-size:12px;display:block;margin-bottom:2px}
 .prod small{font-size:10px;color:#777;line-height:1.3}
 .prod .price{font-size:15px;font-weight:700;color:#1a2e5a;margin-top:6px}
 .tag{position:absolute;right:7px;top:7px;font-size:9px;background:#fde8e8;color:#c0392b;padding:3px 6px;border-radius:10px;font-weight:700}
 .tag.seasonal{background:#fef3c7;color:#92400e}
+
+/* photo upload in settings */
+.photo-cell{display:flex;align-items:center;gap:5px}
+.photo-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;border:0.5px solid #d8cfc5;flex-shrink:0}
+.photo-thumb-placeholder{width:36px;height:36px;border-radius:6px;border:1px dashed #d8cfc5;display:flex;align-items:center;justify-content:center;font-size:14px;color:#bbb;flex-shrink:0;background:#f7f3ee;cursor:pointer}
+.photo-upload-btn{border:0.5px solid #d8cfc5;background:#f7f3ee;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.photo-upload-btn:hover{background:#eef1ff;border-color:#1a2e5a}
+.photo-rm-btn{border:0;background:none;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;padding:2px}
 .allergen-short{font-size:9px;color:#8b5a16;display:block;margin-top:2px;line-height:1.3}
 .allergen-pending{display:inline-block;background:#fff0d7;color:#8d5a14;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;margin-top:2px}
 .allergen-ok{display:inline-block;background:#e8f4eb;color:#2f7d4a;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;margin-top:2px}
@@ -240,7 +251,7 @@ th{color:#888;font-size:10px;font-weight:700}
 .num{text-align:right}
 
 /* settings */
-.settings-row{display:grid;grid-template-columns:70px 1.3fr 1fr 85px 80px 90px 40px;gap:5px;padding:5px 0;border-bottom:0.5px solid #e8e0d5;align-items:center}
+.settings-row{display:grid;grid-template-columns:70px 1.3fr 1fr 85px 80px 90px 80px 40px;gap:5px;padding:5px 0;border-bottom:0.5px solid #e8e0d5;align-items:center}
 .settings-row input,.settings-row select{width:100%;padding:6px;border:0.5px solid #d8cfc5;border-radius:6px}
 .forms{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 
@@ -378,7 +389,7 @@ th{color:#888;font-size:10px;font-weight:700}
 <!-- HEADER -->
 <header>
   <div class="logo">NR</div>
-  <div class="brand">NiceRolls TPV <small>v0.9.1 beta</small></div>
+  <div class="brand">NiceRolls TPV <small>v0.9.2 beta</small></div>
   <div class="hmet"><span class="hmet-label">Pedidos</span><span class="hmet-val" id="m-count">0</span></div>
   <div class="hmet"><span class="hmet-label">Efectivo</span><span class="hmet-val green" id="m-ef">0,00 €</span></div>
   <div class="hmet"><span class="hmet-label">Tarjeta</span><span class="hmet-val blue" id="m-tj">0,00 €</span></div>
@@ -952,6 +963,19 @@ let parked=JSON.parse(localStorage.nr_parked_v3||'[]');
 let cart=[],currentCat='Rolls',pp=null,sel={},activeDiscount=null;
 if(!Array.isArray(store.discounts))store.discounts=[];
 
+// ── FOTO STORAGE ──
+// Las fotos se guardan en localStorage separado (nr_photos_v1) para no saturar nr_catalog_v3
+// Clave: product id → base64 string (data:image/...)
+// Preparado para migración futura a API: getPhoto/setPhoto/removePhoto son los únicos puntos de acceso
+let _photoCache=null;
+function _photos(){if(!_photoCache){try{_photoCache=JSON.parse(localStorage.nr_photos_v1||'{}')}catch{_photoCache={}}}return _photoCache}
+function _savePhotos(){localStorage.nr_photos_v1=JSON.stringify(_photoCache||{})}
+function getPhoto(id){return _photos()[id]||null}
+function setPhoto(id,dataUrl){_photos()[id]=dataUrl;_savePhotos()}
+function removePhoto(id){delete _photos()[id];_savePhotos()}
+function photoBytesUsed(){return new Blob([localStorage.nr_photos_v1||'']).size}
+function photoStorageInfo(){const b=photoBytesUsed();return `${(b/1024).toFixed(0)} KB de ~5 MB`}
+
 // ── ALLERGEN EXTRAS INIT ──
 if(!store.allergenExtras)store.allergenExtras={};
 EXTRA_NAMES.forEach(n=>{if(!store.allergenExtras[n])store.allergenExtras[n]={allergens:[],traces:[],verified:false,note:'Pendiente de revisar etiqueta/ficha técnica.'}});
@@ -1117,12 +1141,18 @@ function render(){
   document.getElementById('cats').innerHTML=cs.map(c=>`<button class="cat-btn${c===currentCat?' on':''}" onclick="currentCat='${c.replaceAll("'","\\'")}';render()">${esc(c)}</button>`).join('');
   const unavailTag=p=>stockBlocked(p)?'STOCK 0':!comboHasValidOptions(p)?'NO DISP.':'AGOTADO';
   document.getElementById('quick').innerHTML=catalog.filter(p=>p.quick&&p.enabled!==false).slice(0,5).map(p=>`<button class="${unavailable(p)?'sold':''}" onclick="pick('${p.id}')">${esc(p.name)}<small>${unavailable(p)?unavailTag(p):money(p.price)}</small>${stockTracked(p)&&!unavailable(p)?`<small>${stockValue(p)} uds.</small>`:''}</button>`).join('');
-  document.getElementById('products').innerHTML=catalog.filter(p=>p.cat===currentCat&&p.enabled!==false).map(p=>`
-    <button class="prod${unavailable(p)?' sold':''}" onclick="pick('${p.id}')">
+  document.getElementById('products').innerHTML=catalog.filter(p=>p.cat===currentCat&&p.enabled!==false).map(p=>{
+    const foto=getPhoto(p.id);
+    const imgHtml=foto
+      ?`<img class="prod-img" src="${foto}" alt="${esc(p.name)}" loading="lazy">`
+      :`<div class="prod-img-placeholder">🍞</div>`;
+    return `<button class="prod${unavailable(p)?' sold':''}" onclick="pick('${p.id}')">
       ${unavailable(p)?`<span class="tag">${unavailTag(p)}</span>`:(p.cat==='Premium'?'<span class="tag seasonal">Temporada</span>':'')}
-      <div><b>${esc(p.name)}</b><small>${esc(p.desc||'')}</small>${allergenCard(p)}${stockBadge(p)}</div>
-      <span class="price">${money(p.price)}</span>
-    </button>`).join('');
+      ${imgHtml}
+      <div class="prod-body"><div><b>${esc(p.name)}</b><small>${esc(p.desc||'')}</small>${allergenCard(p)}${stockBadge(p)}</div>
+      <span class="price">${money(p.price)}</span></div>
+    </button>`;
+  }).join('');
   renderCart();renderBadges();renderHorcus();updateMetrics();
 }
 
@@ -1411,7 +1441,70 @@ function openAdmin(){requireAdmin(()=>{document.getElementById('adminPinNote').t
 function adminGo(a){closeM('adminM');if(a==='close')openClose();if(a==='settings')openSettings();if(a==='sales')openSales();if(a==='stock')openStock();if(a==='allergens')openAllergenEditor();if(a==='discounts')openDiscountAdmin();if(a==='backup')exportBackup();if(a==='users')openUsersAdmin()}
 function openSettings(){document.getElementById('storeName').value=store.name;document.getElementById('float').value=store.openingFloat||0;document.getElementById('pin').value=store.adminPin||'1234';document.getElementById('target').value=store.horcusTarget||50;fillCats();renderSettings();openM('settingsM')}
 function fillCats(){let c=cats();document.getElementById('catList').innerHTML=c.map(x=>`<option value="${esc(x)}">`).join('');document.getElementById('newCat').innerHTML=c.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__new__">+ Crear nuevo apartado…</option>'}
-function renderSettings(){document.getElementById('settingsRows').innerHTML=catalog.map((p,i)=>`<div class="settings-row"><select id="en${i}"><option value="1" ${p.enabled!==false?'selected':''}>Visible</option><option value="0" ${p.enabled===false?'selected':''}>Oculto</option></select><input id="nm${i}" value="${esc(p.name)}"><input id="ct${i}" list="catList" value="${esc(p.cat)}"><input id="pr${i}" type="number" step="0.01" value="${Number(p.price).toFixed(2)}"><select id="qk${i}"><option value="0" ${!p.quick?'selected':''}>Normal</option><option value="1" ${p.quick?'selected':''}>Rápido</option></select><button class="btn-sm" onclick="openAllergenEditor('${p.id}','product')">⚠️</button><button class="btn-danger" style="padding:5px 8px" onclick="delProduct(${i})">×</button></div>`).join('')}
+function renderSettings(){
+  const used=photoStorageInfo();
+  document.getElementById('settingsRows').innerHTML=
+    `<div style="font-size:10px;color:#888;padding:4px 0 6px">📷 Fotos: ${used} usados · Se guardan en este navegador</div>`+
+    catalog.map((p,i)=>{
+      const foto=getPhoto(p.id);
+      const thumbHtml=foto
+        ?`<img class="photo-thumb" src="${foto}" alt="">`
+        :`<div class="photo-thumb-placeholder" title="Sin foto">📷</div>`;
+      const btnHtml=foto
+        ?`<button class="photo-rm-btn" onclick="removeProductPhoto('${p.id}')" title="Quitar foto">✕</button>`
+        :`<label class="photo-upload-btn" for="photoFile${i}" title="Subir foto">Subir</label><input type="file" id="photoFile${i}" accept="image/*" style="display:none" onchange="uploadProductPhoto('${p.id}',this)">`;
+      return `<div class="settings-row">
+        <select id="en${i}"><option value="1" ${p.enabled!==false?'selected':''}>Visible</option><option value="0" ${p.enabled===false?'selected':''}>Oculto</option></select>
+        <input id="nm${i}" value="${esc(p.name)}">
+        <input id="ct${i}" list="catList" value="${esc(p.cat)}">
+        <input id="pr${i}" type="number" step="0.01" value="${Number(p.price).toFixed(2)}">
+        <select id="qk${i}"><option value="0" ${!p.quick?'selected':''}>Normal</option><option value="1" ${p.quick?'selected':''}>Rápido</option></select>
+        <button class="btn-sm" onclick="openAllergenEditor('${p.id}','product')">⚠️</button>
+        <div class="photo-cell">${thumbHtml}${btnHtml}</div>
+        <button class="btn-danger" style="padding:5px 8px" onclick="delProduct(${i})">×</button>
+      </div>`;
+    }).join('');
+}
+function uploadProductPhoto(id,input){
+  const file=input.files[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){toast('Selecciona una imagen');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      // Redimensionar a máximo 480px de ancho manteniendo proporción, calidad 0.82
+      const MAX=480;
+      let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.82);
+      try{
+        setPhoto(id,dataUrl);
+        render();
+        renderSettings();
+        toast('Foto guardada · '+photoStorageInfo());
+      }catch(err){
+        if(err.name==='QuotaExceededError'){
+          toast('⚠ Sin espacio en el navegador. Borra alguna foto.');
+        }else{
+          toast('Error al guardar la foto');
+          console.error(err);
+        }
+      }
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeProductPhoto(id){
+  removePhoto(id);
+  render();
+  renderSettings();
+  toast('Foto eliminada');
+}
 function toggleNewCat(){document.getElementById('newCatField').style.display=document.getElementById('newCat').value==='__new__'?'block':'none'}
 function toggleCustomCream(){document.getElementById('customCreamField').style.display=document.getElementById('newPreset').value==='creamCustom'?'block':'none'}
 function addNewProduct(){let n=document.getElementById('newName').value.trim(),p=Number(document.getElementById('newPrice').value),c=document.getElementById('newCat').value==='__new__'?document.getElementById('newCatName').value.trim():document.getElementById('newCat').value;if(!n||!c||!Number.isFinite(p)){toast('Completa nombre, precio y apartado');return}let x={id:'custom_'+Date.now(),cat:c,name:n,desc:document.getElementById('newDesc').value.trim(),price:p,quick:document.getElementById('newQuick').value==='1',allergens:[],traces:[],allergenVerified:false,allergenNote:'Pendiente de comprobar etiqueta/ficha técnica.'},pr=document.getElementById('newPreset').value;if(pr==='coffee')x.coffee=true;if(pr==='cream080')x.creamPrice=.8;if(pr==='cream100')x.creamPrice=1;if(pr==='creamCustom')x.creamPrice=Number(document.getElementById('newCream').value||0);catalog.push(x);save();document.getElementById('newName').value='';document.getElementById('newPrice').value='';document.getElementById('newDesc').value='';fillCats();renderSettings();render();toast('Producto añadido · revisa sus alérgenos');openAllergenEditor(x.id,'product')}
@@ -1421,9 +1514,9 @@ function resetCatalog(){if(confirm('¿Restaurar carta inicial? Las ventas no se 
 
 // ── EXPORT / IMPORT ──
 function exportCSV(){let rows=[['Fecha','Hora','Ticket','Producto','Opciones','Cantidad','Precio','Total línea','Subtotal ticket','Descuento','Importe descuento','Pago','Efectivo','Tarjeta','Ticket total','Anulado']];today().forEach(s=>s.items.forEach(i=>{let p=parts(s);rows.push([dayKey(),new Date(s.ts).toLocaleTimeString('es-ES'),s.ticket,i.name,i.modText||'',i.qty,i.unitPrice.toFixed(2),(i.unitPrice*i.qty).toFixed(2),Number(s.subtotal??s.total).toFixed(2),s.discount?.name||'',Number(s.discountAmount||0).toFixed(2),s.method,p.cash.toFixed(2),p.card.toFixed(2),Number(s.total).toFixed(2),s.voided?'SI':'NO'])}));download('\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(';')).join('\n'),`NiceRolls_ventas_${dayKey()}.csv`,'text/csv;charset=utf-8')}
-function exportBackup(){download(JSON.stringify({catalog,store,sales,orders,parked,cajas,exportedAt:ts()},null,2),`NiceRolls_backup_${dayKey()}.json`,'application/json');localStorage.nr_last_backup=dayKey();toast('Copia descargada')}
+function exportBackup(){download(JSON.stringify({catalog,store,sales,orders,parked,cajas,photos:_photos(),exportedAt:ts()},null,2),`NiceRolls_backup_${dayKey()}.json`,'application/json');localStorage.nr_last_backup=dayKey();toast('Copia descargada')}
 function download(c,n,t){let b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
-function importBackup(){let i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=()=>{let r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);catalog=d.catalog||catalog;store=d.store||store;if(!Array.isArray(store.discounts))store.discounts=[];sales=d.sales||sales;orders=d.orders||orders;parked=d.parked||parked;if(d.cajas)cajas=d.cajas;save();saveCajas();render();closeM('settingsM');toast('Copia restaurada')}catch{alert('Archivo no válido')}};r.readAsText(i.files[0])};i.click()}
+function importBackup(){let i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=()=>{let r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);catalog=d.catalog||catalog;store=d.store||store;if(!Array.isArray(store.discounts))store.discounts=[];sales=d.sales||sales;orders=d.orders||orders;parked=d.parked||parked;if(d.cajas)cajas=d.cajas;if(d.photos){_photoCache=d.photos;_savePhotos()}save();saveCajas();render();closeM('settingsM');toast('Copia restaurada')}catch{alert('Archivo no válido')}};r.readAsText(i.files[0])};i.click()}
 
 // ── KEYBOARD SHORTCUTS ──
 document.addEventListener('keydown',e=>{
