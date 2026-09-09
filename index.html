@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>NiceRolls TPV v13</title>
+<style>
+/* ── RESET & BASE ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f0ebe3;color:#1a1a1a;overflow:hidden;height:100vh;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;cursor:pointer}
+button{-webkit-touch-callout:none;user-select:none}
+
+/* ══ LOGIN ══ */
+#loginScreen{position:fixed;inset:0;background:#1a2e5a;display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+#loginScreen.hidden{display:none}
+.login-box{background:#fff;border-radius:20px;padding:32px 28px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.35)}
+.login-logo{text-align:center;margin-bottom:22px}
+.login-logo .nr-icon{width:64px;height:64px;background:#1a2e5a;border-radius:18px;display:inline-grid;place-items:center;font-weight:900;font-size:20px;color:#fff;margin-bottom:10px}
+.login-logo h1{font-size:22px;font-weight:800;color:#1a2e5a}
+.login-logo p{font-size:13px;color:#888;margin-top:3px}
+.login-field{margin-bottom:13px}
+.login-field label{display:block;font-size:11px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.login-field input{width:100%;padding:13px 14px;border:1.5px solid #d8cfc5;border-radius:10px;font-size:16px;transition:border-color .15s}
+.login-field input:focus{outline:none;border-color:#1a2e5a}
+.login-btn{width:100%;padding:14px;background:#1a2e5a;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:700;margin-top:4px}
+.login-btn:active{background:#0f1d3a}
+.login-err{background:#fde8e8;border:0.5px solid #f5c6cb;border-radius:8px;padding:9px 12px;font-size:12px;color:#c0392b;margin-bottom:12px;display:none}
+.login-err.show{display:block}
+.caja-required-box{background:#fff8ef;border:1.5px solid #f0c070;border-radius:14px;padding:20px;text-align:center}
+.caja-required-box h3{font-size:16px;font-weight:700;color:#92400e;margin-bottom:6px}
+.caja-required-box p{font-size:12px;color:#78350f;margin-bottom:14px}
+.caja-float-input{width:100%;padding:14px;border:1.5px solid #d8cfc5;border-radius:10px;font-size:24px;font-weight:700;text-align:center;margin-bottom:10px}
+.caja-float-input:focus{outline:none;border-color:#2f7d4a}
+.caja-open-btn{width:100%;padding:14px;background:#2f7d4a;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:700}
+.caja-open-btn:active{background:#1e5c35}
+
+/* ══ PRINT ══ */
+.print-preview{font-family:'Courier New',monospace;font-size:12px;width:100%;max-width:300px;margin:0 auto;border:1px dashed #d8cfc5;border-radius:8px;padding:12px;background:#fff}
+.pp-center{text-align:center}
+.pp-bold{font-weight:700}
+.pp-big{font-size:16px;font-weight:900;text-align:center;margin-bottom:2px}
+.pp-line{border-top:1px dashed #000;margin:5px 0}
+.pp-row{display:flex;justify-content:space-between;margin:2px 0;font-size:11px}
+.pp-mods{font-size:10px;padding-left:10px;color:#555;margin-bottom:1px}
+#printArea{display:none}
+@media print{
+  #printArea{display:block;font-family:'Courier New',monospace;font-size:12px;width:72mm}
+  body>*:not(#printArea){display:none !important}
+}
+
+/* ══ USERS MODAL ══ */
+.user-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:0.5px solid #d8cfc5;border-radius:8px;margin-bottom:5px;background:#f7f3ee}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-rows:56px 1fr;height:100vh}
+
+/* ── HEADER ── */
+header{background:#1a2e5a;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:2px solid #0f1d3a}
+.logo{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.15);display:grid;place-items:center;font-weight:900;font-size:11px;color:#fff;flex-shrink:0}
+.brand{color:#fff;font-weight:700;font-size:15px;flex:1}
+.brand small{font-size:10px;color:rgba(255,255,255,0.5);font-weight:400;margin-left:4px}
+.hmet{background:rgba(255,255,255,0.1);border-radius:6px;padding:4px 10px;text-align:center;border:0.5px solid rgba(255,255,255,0.15)}
+.hmet-label{font-size:9px;color:rgba(255,255,255,0.6);display:block}
+.hmet-val{font-size:13px;font-weight:600;color:#fff}
+.hmet-val.gold{color:#f5c842}
+.hmet-val.green{color:#6ee7b7}
+.hmet-val.blue{color:#93c5fd}
+.head-btns{display:flex;gap:5px;margin-left:4px}
+.hbtn{border:0.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:#fff;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:600;position:relative;white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,0.2)}
+.hbtn.admin{background:#c0392b;border-color:#a93226}
+.badge{position:absolute;right:-5px;top:-5px;background:#e74c3c;color:#fff;border-radius:20px;min-width:17px;height:17px;font-size:10px;display:none;place-items:center;font-weight:700}
+#clock{color:rgba(255,255,255,0.8);font-size:13px;font-weight:600;margin-left:4px;white-space:nowrap}
+
+/* ── MAIN GRID ── */
+.main{display:grid;grid-template-columns:1fr 320px;min-height:0;overflow:hidden}
+
+/* ── LEFT: CARTA ── */
+.shop{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+
+/* horcus strip */
+.horcus-strip{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-bottom:0.5px solid #d8cfc5;font-size:11px}
+.horcus-strip .hprog{flex:1;height:6px;background:#e8e0d5;border-radius:10px;overflow:hidden}
+.horcus-strip .hbar{height:100%;background:#1a2e5a;border-radius:10px;transition:width .3s}
+
+/* category tabs */
+.cats{display:flex;gap:4px;padding:7px 8px;background:#fff;border-bottom:0.5px solid #d8cfc5;overflow-x:auto}
+.cats::-webkit-scrollbar{display:none}
+.cat-btn{border:0.5px solid #d8cfc5;background:#f7f3ee;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:600;white-space:nowrap;color:#555}
+.cat-btn.on{background:#1a2e5a;color:#fff;border-color:#1a2e5a}
+
+/* quick access */
+.quick-row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:6px 8px;background:#f7f3ee;border-bottom:0.5px solid #d8cfc5}
+.quick-row button{border:0;border-radius:8px;padding:8px 5px;background:#1a2e5a;color:#fff;text-align:left;font-size:10px;font-weight:700;min-height:52px;display:flex;flex-direction:column;justify-content:space-between}
+.quick-row button small{font-size:10px;font-weight:400;opacity:.8}
+.quick-row button.sold{opacity:.45;filter:grayscale(1)}
+
+/* product grid */
+.productswrap{flex:1;overflow-y:auto;padding:8px}
+.products{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.prod{border:0.5px solid #d8cfc5;background:#fff;border-radius:12px;padding:10px;min-height:90px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;position:relative;transition:border-color .15s}
+.prod:hover:not(.sold){border-color:#1a2e5a}
+.prod:active:not(.sold){transform:scale(.97)}
+.prod.sold{opacity:.4;filter:grayscale(1)}
+.prod b{font-size:12px;display:block;margin-bottom:2px}
+.prod small{font-size:10px;color:#777;line-height:1.3}
+.prod .price{font-size:15px;font-weight:700;color:#1a2e5a;margin-top:6px}
+.tag{position:absolute;right:7px;top:7px;font-size:9px;background:#fde8e8;color:#c0392b;padding:3px 6px;border-radius:10px;font-weight:700}
+.tag.seasonal{background:#fef3c7;color:#92400e}
+.allergen-short{font-size:9px;color:#8b5a16;display:block;margin-top:2px;line-height:1.3}
+.allergen-pending{display:inline-block;background:#fff0d7;color:#8d5a14;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;margin-top:2px}
+.allergen-ok{display:inline-block;background:#e8f4eb;color:#2f7d4a;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;margin-top:2px}
+.stockbadge{font-size:9px;font-weight:700;display:block;margin-top:3px}
+.stockbadge.zero{color:#c0392b}.stockbadge.low{color:#b86f20}.stockbadge.ok{color:#2f7d4a}
+
+/* ── RIGHT: TICKET ── */
+.cart{border-left:0.5px solid #d8cfc5;background:#fff;display:flex;flex-direction:column;min-height:0}
+.cart-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:0.5px solid #e8e0d5}
+.cart-head h2{font-size:14px;font-weight:700}
+.cart-head small{font-size:11px;color:#777}
+
+/* right tabs */
+.rtabs{display:flex;border-bottom:0.5px solid #e8e0d5}
+.rtab{flex:1;padding:7px 3px;font-size:10px;text-align:center;cursor:pointer;color:#888;border-bottom:2px solid transparent;background:#f7f3ee;font-weight:500}
+.rtab.on{color:#1a2e5a;border-bottom-color:#1a2e5a;background:#fff;font-weight:700}
+
+.rpanel{display:none;flex-direction:column;flex:1;overflow:hidden}
+.rpanel.show{display:flex}
+
+/* ticket list */
+.cart-list{flex:1;overflow-y:auto;padding:8px}
+.cart-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#aaa;font-size:13px;text-align:center;gap:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:6px;padding:8px 2px;border-bottom:0.5px solid #f0e8de}
+.item b{font-size:12px}
+.item-mods{font-size:10px;color:#888;margin-top:2px}
+.item-actions{display:flex;gap:5px;align-items:center;margin-top:5px}
+.qty-btn{width:22px;height:22px;border:0.5px solid #d8cfc5;background:#f7f3ee;border-radius:5px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.qty-val{font-size:12px;font-weight:700;min-width:18px;text-align:center}
+.rm-btn{border:0;background:none;color:#c0392b;font-size:11px;margin-left:auto}
+
+/* cart footer */
+.cart-foot{padding:10px 12px;border-top:0.5px solid #e8e0d5;background:#f7f3ee}
+.discount-bar{display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:7px}
+.discount-btn{border:1px dashed #c9a96e;background:#fff8ef;color:#80511e;border-radius:8px;padding:7px 9px;font-weight:700;font-size:11px;text-align:left}
+.discount-btn.active{border-style:solid;background:#edf7ef;color:#2f6f43}
+.discount-rm{border:0.5px solid #e8d9cb;background:#fff;border-radius:8px;padding:7px 9px;color:#c0392b;font-weight:700;font-size:12px}
+.discount-summary{background:#edf7ef;border:0.5px solid #c4dfca;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;font-weight:700;font-size:12px}
+.total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.total-row span{font-size:12px;color:#666}
+.total-row strong{font-size:24px;font-weight:800;color:#1a2e5a}
+.pay-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px}
+.pay-btn{border:0;color:#fff;border-radius:8px;padding:11px 4px;font-weight:800;font-size:12px}
+.pay-btn.cash{background:#2f7d4a}.pay-btn.card{background:#1a2e5a}.pay-btn.split{background:#b86f20}
+.cart-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.cart-actions button{border:0.5px solid #d8cfc5;background:#fff;border-radius:8px;padding:7px;font-size:11px;font-weight:700}
+
+/* pedidos/aparcados panels */
+.ped-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px}
+.ped-card{background:#f7f3ee;border:0.5px solid #d8cfc5;border-radius:10px;padding:9px 10px}
+.ped-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.ped-num{font-size:12px;font-weight:700}
+.ped-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700}
+.ped-badge.ec{background:#dbeafe;color:#1e3a6e}
+.ped-badge.ap{background:#fef3c7;color:#78350f}
+.ped-badge.fin{background:#d1fae5;color:#065f46}
+.ped-badge.ef{background:#d1fae5;color:#065f46}
+.ped-badge.tj{background:#dbeafe;color:#1e3a6e}
+.ped-badge.mx{background:#ede9fe;color:#3b0764}
+.ped-items{font-size:10px;color:#777;margin-bottom:3px}
+.ped-total{font-size:11px;font-weight:700}
+.ped-rec{font-size:10px;color:#1a2e5a;text-decoration:underline;cursor:pointer;margin-top:3px}
+
+/* orders full panel */
+.orders-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.ocol{background:#f7f3ee;border:0.5px solid #d8cfc5;border-radius:10px;padding:8px}
+.ocol h4{font-size:11px;margin-bottom:6px}
+.ocard{background:#fff;border:0.5px solid #d8cfc5;border-radius:8px;padding:8px;margin-bottom:5px}
+.ocard .on{font-size:15px;font-weight:800}
+.ocard .oitems{font-size:10px;line-height:1.4;margin:4px 0}
+.ocard button{border:0;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:700;margin-right:3px}
+.ocard .prep{background:#e8efff;color:#1a2e5a}
+.ocard .deliver{background:#e8f5ec;color:#2f7d4a}
+
+/* ── OVERLAYS / MODALS ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:15px;z-index:50}
+.overlay.show{display:flex}
+.modal{width:min(700px,96vw);max-height:92vh;overflow-y:auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal.wide{width:min(1000px,97vw)}
+.modal h3{margin:0 0 4px;font-size:16px}
+.modal .sub{color:#888;font-size:12px;margin-bottom:12px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn-primary{border:0;background:#1a2e5a;color:#fff;border-radius:8px;padding:9px 14px;font-weight:700}
+.btn-cancel{border:0.5px solid #d8cfc5;background:#fff;border-radius:8px;padding:9px 14px;font-weight:700}
+.btn-danger{border:0;background:#c0392b;color:#fff;border-radius:8px;padding:9px 14px;font-weight:700}
+.btn-sm{border:0.5px solid #d8cfc5;background:#fff;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700}
+
+/* modal: modifier options */
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.opt{border:0.5px solid #d8cfc5;background:#fff;border-radius:10px;padding:10px;text-align:left;font-weight:700;font-size:12px}
+.opt.sel{border:2px solid #1a2e5a;background:#eef1ff}
+.opt.multi-sel{border:2px solid #2f7d4a;background:#edf7ef}
+.opt.none-sel{border:2px solid #1a2e5a;background:#eef1ff}
+.multihelp{display:block;margin-top:4px;color:#888;font-size:10px}
+
+/* caja modal */
+.caja-card{background:#f7f3ee;border:0.5px solid #d8cfc5;border-radius:10px;padding:12px;margin-bottom:10px}
+.caja-card h4{font-size:11px;color:#888;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.caja-row{display:flex;justify-content:space-between;font-size:12px;color:#666;padding:3px 0;border-bottom:0.5px solid #e8e0d5}
+.caja-row:last-child{border:none}
+.caja-row-val{font-weight:700;color:#1a1a1a}
+.caja-total{display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:6px 0 0;color:#1a2e5a;border-top:0.5px solid #d8cfc5;margin-top:4px}
+.caja-total-val.pos{color:#2f7d4a}
+
+/* cobro modal */
+.pay-methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.pay-choice{padding:14px 8px;border-radius:10px;border:2px solid #d8cfc5;background:#f7f3ee;text-align:center;font-weight:700;font-size:13px}
+.pay-choice.sel{border-color:#1a2e5a;background:#eef1ff}
+.pay-choice.sel-green{border-color:#2f7d4a;background:#edf7ef}
+.pay-choice.sel-orange{border-color:#b86f20;background:#fff8ef}
+.pay-choice-icon{font-size:22px;display:block;margin-bottom:4px}
+.amount{text-align:center;font-size:40px;font-weight:900;margin:8px 0;color:#1a2e5a}
+.money-input{width:100%;padding:10px;border:1.5px solid #d8cfc5;border-radius:10px;font-size:24px;text-align:center;font-weight:700}
+.money-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:7px}
+.money-btns button{border:0.5px solid #d8cfc5;background:#fff;border-radius:8px;padding:8px;font-weight:700;font-size:12px}
+.change-display{background:#e8f5ec;border:0.5px solid #c4dfca;border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;font-weight:700;margin-top:8px}
+.change-display.bad{background:#fde8e8;border-color:#f5c6cb}
+.split-section{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.field label{display:block;font-size:10px;color:#888;font-weight:700;margin-bottom:3px}
+.field input,.field select{width:100%;padding:8px;border:0.5px solid #d8cfc5;border-radius:8px}
+
+/* cierre / ventas */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:10px 0}
+.kpi{background:#f7f3ee;border:0.5px solid #d8cfc5;border-radius:10px;padding:10px}
+.kpi small{color:#888;font-weight:700;font-size:10px;display:block}
+.kpi b{font-size:17px;display:block;margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:7px;border-bottom:0.5px solid #e8e0d5;text-align:left;vertical-align:top}
+th{color:#888;font-size:10px;font-weight:700}
+.num{text-align:right}
+
+/* settings */
+.settings-row{display:grid;grid-template-columns:70px 1.3fr 1fr 85px 80px 90px 40px;gap:5px;padding:5px 0;border-bottom:0.5px solid #e8e0d5;align-items:center}
+.settings-row input,.settings-row select{width:100%;padding:6px;border:0.5px solid #d8cfc5;border-radius:6px}
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+/* stock */
+.stock-list{display:grid;gap:6px;margin-top:8px}
+.stock-row{display:grid;grid-template-columns:minmax(160px,1.5fr) 100px 90px 85px 180px;gap:6px;align-items:center;border:0.5px solid #d8cfc5;border-radius:10px;padding:8px;background:#fff}
+.stock-row input,.stock-row select{width:100%;padding:7px;border:0.5px solid #d8cfc5;border-radius:7px}
+.stock-name b{font-size:13px}.stock-name small{color:#888;font-size:11px}
+.stock-btns{display:flex;gap:3px;align-items:center}
+.stock-btns button{border:0.5px solid #d8cfc5;background:#fff;border-radius:7px;padding:6px 8px;font-weight:700}
+.stock-state{font-size:10px;font-weight:700;border-radius:20px;padding:5px 7px;text-align:center;white-space:nowrap}
+.s-ok{background:#e8f4eb;color:#2f7d4a}.s-low{background:#fff0d7;color:#93601e}.s-zero{background:#fde8e8;color:#c0392b}.s-off{background:#eee;color:#777}
+
+/* allergens */
+.allergen-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.allergen-chip{border:0.5px solid #d8cfc5;background:#fff;border-radius:10px;padding:8px;font-size:11px;font-weight:700}
+.allergen-chip.contains{background:#fff0d7;border-color:#e3bd79;color:#75480f}
+.allergen-chip.traces{background:#f1efff;border-color:#c8c1ec;color:#4c438b}
+.allergen-summary{border:0.5px solid #d8cfc5;border-radius:12px;padding:12px;background:#f7f3ee;margin:8px 0}
+.allergen-checks{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+.allergen-check{display:flex;gap:7px;align-items:center;border:0.5px solid #d8cfc5;background:#fff;border-radius:8px;padding:7px;font-size:11px;font-weight:700}
+.allergen-check input{width:15px;height:15px}
+.allergen-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.allergen-editor-box{border:0.5px solid #d8cfc5;border-radius:12px;padding:12px;background:#f7f3ee;margin-top:10px}
+.a-verified{background:#e8f4eb;color:#2f7d4a;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700}
+.a-pending{background:#fff0d7;color:#8d5a14;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700}
+.allergen-note{width:100%;min-height:60px;padding:8px;border:0.5px solid #d8cfc5;border-radius:8px;resize:vertical}
+
+/* discounts */
+.discount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.discount-choice{border:0.5px solid #d8cfc5;background:#fff;border-radius:12px;padding:12px;text-align:left;font-weight:700;min-height:88px}
+.discount-choice:hover:not(:disabled){border-color:#1a2e5a;background:#f4f6ff}
+.discount-choice:disabled{opacity:.4;cursor:not-allowed;background:#eee}
+.discount-choice .dvalue{font-size:19px;display:block;margin-top:5px;color:#2f7d4a}
+.discount-choice .dmin{font-size:10px;color:#888;display:block;margin-top:3px}
+.discount-row{display:grid;grid-template-columns:65px 1.4fr 95px 95px 105px 105px 40px;gap:5px;align-items:center;padding:5px 0;border-bottom:0.5px solid #e8e0d5}
+.discount-row input,.discount-row select{width:100%;padding:7px;border:0.5px solid #d8cfc5;border-radius:7px}
+
+/* admin opts */
+.admin-opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.admin-opt{border:0.5px solid #d8cfc5;background:#f7f3ee;border-radius:10px;padding:12px;text-align:left;font-weight:700;font-size:13px}
+.admin-opt:hover{border-color:#1a2e5a;background:#eef1ff}
+
+/* sold list */
+.sold-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sold-row{border:0.5px solid #d8cfc5;border-radius:10px;padding:8px;display:flex;justify-content:space-between;align-items:center}
+.sold-row button{border:0;border-radius:20px;padding:6px 9px;font-size:10px;font-weight:700}
+
+/* park row */
+.park-row{border:0.5px solid #d8cfc5;border-radius:10px;padding:9px;margin-bottom:6px;display:flex;justify-content:space-between;gap:7px}
+
+/* utils */
+.note{padding:9px;border:0.5px solid #ead69a;background:#fff4cd;border-radius:10px;font-size:12px;margin-top:8px}
+.note.good{background:#eaf7ee;border-color:#bfe1c8}
+.note.bad{background:#fde8e8;border-color:#efbebe}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1a2e5a;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;z-index:200;transition:.2s;font-size:13px;font-weight:600;pointer-events:none}
+.toast.show{opacity:1}
+.fullorder{position:fixed;inset:0;background:#1a2e5a;color:#fff;display:none;align-items:center;justify-content:center;text-align:center;z-index:150}
+.fullorder.show{display:flex}
+.fullorder small{font-size:20px}
+.fullorder b{display:block;font-size:clamp(80px,18vw,160px)}
+
+@media(max-width:1100px){.products{grid-template-columns:repeat(3,1fr)}.quick-row{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:800px){body{overflow:auto}.app{height:auto}.main{grid-template-columns:1fr}.cart{position:fixed;inset:56px 0 0;z-index:30;display:none}.cart.mobile{display:flex}.products{grid-template-columns:repeat(2,1fr)}.quick-row{grid-template-columns:repeat(2,1fr)}.orders-cols,.kpis{grid-template-columns:1fr 1fr}.forms{grid-template-columns:1fr}.sold-list{grid-template-columns:1fr}.allergen-editor-grid{grid-template-columns:1fr}.settings-row{grid-template-columns:1fr 1fr}.stock-row{grid-template-columns:1fr 80px}}
+@media print{#printArea{display:block !important}body>*:not(#printArea){display:none !important}}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="loginScreen">
+  <div class="login-box" id="loginBox">
+    <div class="login-logo">
+      <div class="nr-icon">NR</div>
+      <h1>NiceRolls TPV</h1>
+      <p>Sistema de punto de venta</p>
+    </div>
+    <div class="login-err" id="loginErr">Usuario o contraseña incorrectos.</div>
+    <div class="login-field"><label>Usuario</label><input id="loginUser" type="text" placeholder="gerente" autocomplete="username"></div>
+    <div class="login-field"><label>Contraseña</label><input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="login-btn" onclick="doLogin()">Entrar al TPV</button>
+  </div>
+  <div class="login-box" id="cajaRequiredBox" style="display:none">
+    <div class="login-logo">
+      <div class="nr-icon" style="background:#2f7d4a;font-size:26px">💵</div>
+      <h1>Apertura de caja</h1>
+      <p>Introduce el fondo inicial del turno</p>
+    </div>
+    <div class="caja-required-box">
+      <h3>Caja no abierta</h3>
+      <p>Debes registrar el dinero en caja antes de operar. Quedará registrado en el cierre de jornada.</p>
+      <input class="caja-float-input" id="floatAmountInput" type="number" step="0.01" min="0" placeholder="0,00 €" oninput="updateCajaPreview()">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#78350f;margin-bottom:14px"><span>Fondo inicial:</span><strong id="cajaPreview">0,00 €</strong></div>
+      <button class="caja-open-btn" onclick="confirmarAperturaCaja()">✓ Abrir caja y comenzar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PRINT AREA (solo visible al imprimir) ══ -->
+<div id="printArea"></div>
+
+<!-- ══ TICKET PRINT MODAL ══ -->
+<div class="overlay" id="printM">
+  <div class="modal" style="max-width:380px">
+    <h3>🖨️ Ticket listo</h3>
+    <div class="sub">Revisa el ticket y pulsa imprimir.</div>
+    <div class="print-preview" id="printPreview"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('printM')">Cerrar</button>
+      <button class="btn-primary" onclick="doPrint()">🖨️ Imprimir ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ USERS MODAL ══ -->
+<div class="overlay" id="usersM">
+  <div class="modal">
+    <h3>👤 Gestión de usuarios</h3>
+    <div class="sub">Contraseñas almacenadas con hash SHA-256.</div>
+    <div id="usersList" style="margin-bottom:12px"></div>
+    <div style="border:0.5px solid #d8cfc5;border-radius:10px;padding:12px">
+      <h4 style="margin-bottom:10px">Añadir usuario</h4>
+      <div class="forms">
+        <div class="field"><label>Usuario</label><input id="newUserName" placeholder="Ej. empleado1"></div>
+        <div class="field"><label>Contraseña</label><input id="newUserPass" type="password" placeholder="Mínimo 6 caracteres"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:8px"><button class="btn-primary" onclick="addUser()">Añadir usuario</button></div>
+    </div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('usersM')">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">NR</div>
+  <div class="brand">NiceRolls TPV <small>v13</small></div>
+  <div class="hmet"><span class="hmet-label">Pedidos</span><span class="hmet-val" id="m-count">0</span></div>
+  <div class="hmet"><span class="hmet-label">Efectivo</span><span class="hmet-val green" id="m-ef">0,00 €</span></div>
+  <div class="hmet"><span class="hmet-label">Tarjeta</span><span class="hmet-val blue" id="m-tj">0,00 €</span></div>
+  <div class="hmet"><span class="hmet-label">Ticket medio</span><span class="hmet-val gold" id="m-avg">— €</span></div>
+  <div class="head-btns">
+    <button class="hbtn" onclick="openOrders()">Pedidos<i class="badge" id="ordersBadge"></i></button>
+    <button class="hbtn" onclick="openParked()">Aparcados<i class="badge" id="parkBadge"></i></button>
+    <button class="hbtn" onclick="openSold()">Agotados</button>
+    <button class="hbtn" onclick="openAllergens()">Alérgenos</button>
+    <button class="hbtn" onclick="openStock()">Stock</button>
+    <button class="hbtn" onclick="openSales()">Ventas</button>
+    <button class="hbtn admin" onclick="openAdmin()">🔒 Admin</button>
+    <button class="hbtn" onclick="doLogout()" title="Cerrar sesión" style="background:rgba(255,255,255,0.08)">⏏</button>
+  </div>
+  <span id="clock"></span>
+  <span id="cajaStatus" style="font-size:10px;color:rgba(255,255,255,0.7);margin-left:4px;white-space:nowrap"></span>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT -->
+  <section class="shop">
+    <div class="horcus-strip">
+      <span>🎁</span>
+      <div><small id="horcusText">— regalos Horcus</small></div>
+      <div class="hprog"><div class="hbar" id="horcusBar"></div></div>
+      <small id="horcusLeft"></small>
+      <button class="btn-sm" onclick="toggleFull()">⛶</button>
+    </div>
+    <div class="quick-row" id="quick"></div>
+    <div class="cats" id="cats"></div>
+    <div class="productswrap"><div class="products" id="products"></div></div>
+  </section>
+
+  <!-- RIGHT: TICKET + TABS -->
+  <aside class="cart" id="cartPanel">
+    <div class="cart-head">
+      <h2>Pedido actual</h2>
+      <small id="ticketNo">#001</small>
+    </div>
+
+    <div class="rtabs">
+      <div class="rtab on" id="rt-ticket" onclick="switchRight('ticket')">Ticket</div>
+      <div class="rtab" id="rt-ec" onclick="switchRight('ec')">En curso <span id="b-ec"></span></div>
+      <div class="rtab" id="rt-ap" onclick="switchRight('ap')">Aparcados <span id="b-ap"></span></div>
+      <div class="rtab" id="rt-fin" onclick="switchRight('fin')">Historial</div>
+    </div>
+
+    <!-- TICKET PANEL -->
+    <div class="rpanel show" id="panel-ticket">
+      <div class="cart-list" id="cartList"></div>
+      <div class="cart-foot">
+        <div id="discountSummary"></div>
+        <div class="discount-bar">
+          <button class="discount-btn" id="discountButton" onclick="openDiscounts()">🏷️ Descuento comercial</button>
+          <button class="discount-rm" id="discountRemove" style="display:none" onclick="removeDiscount()">✕</button>
+        </div>
+        <div class="total-row">
+          <span>TOTAL</span>
+          <strong id="total">0,00 €</strong>
+        </div>
+        <div class="pay-btns">
+          <button class="pay-btn cash" onclick="startPay('cash')">EFECTIVO<br><small>F1</small></button>
+          <button class="pay-btn card" onclick="startPay('card')">TARJETA<br><small>F2</small></button>
+          <button class="pay-btn split" onclick="startPay('split')">MIXTO<br><small>F3</small></button>
+        </div>
+        <div class="cart-actions">
+          <button onclick="parkCart()">⏸ Aparcar</button>
+          <button onclick="clearCart()">Vaciar</button>
+          <button onclick="toggleCart(false)">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EN CURSO -->
+    <div class="rpanel" id="panel-ec"><div class="ped-list" id="list-ec"></div></div>
+    <!-- APARCADOS -->
+    <div class="rpanel" id="panel-ap"><div class="ped-list" id="list-ap"></div></div>
+    <!-- HISTORIAL -->
+    <div class="rpanel" id="panel-fin"><div class="ped-list" id="list-fin"></div></div>
+
+  </aside>
+</div>
+</div>
+
+<!-- ======= MODALS ======= -->
+
+<!-- MOD -->
+<div class="overlay" id="modM">
+  <div class="modal">
+    <h3 id="modTitle"></h3>
+    <div class="sub">Selecciona las opciones</div>
+    <div id="modBody"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('modM')">Cancelar</button>
+      <button class="btn-primary" onclick="confirmMod()">Añadir al ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- COBRO (efectivo) -->
+<div class="overlay" id="cashM">
+  <div class="modal">
+    <h3>Pago en efectivo</h3>
+    <div class="amount" id="cashDue"></div>
+    <input class="money-input" id="cashRec" type="number" step="0.01" placeholder="Importe recibido" oninput="updateCash()">
+    <div class="money-btns">
+      <button onclick="cashExact()">Exacto</button>
+      <button onclick="cashSet(5)">5 €</button>
+      <button onclick="cashSet(10)">10 €</button>
+      <button onclick="cashSet(20)">20 €</button>
+      <button onclick="cashSet(50)">50 €</button>
+    </div>
+    <div class="change-display" id="cashChangeBx">
+      <span>Cambio a devolver</span><strong id="cashChange">0,00 €</strong>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('cashM')">Cancelar</button>
+      <button class="btn-primary" onclick="finishPay('cash')">✓ Cobrado</button>
+    </div>
+  </div>
+</div>
+
+<!-- COBRO (tarjeta) -->
+<div class="overlay" id="cardM">
+  <div class="modal">
+    <h3>Pago con tarjeta</h3>
+    <div class="sub">Introduce esta cantidad en el datáfono</div>
+    <div class="amount" id="cardDue"></div>
+    <div class="note">Confirma aquí solo cuando el datáfono acepte el pago.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('cardM')">Cancelar</button>
+      <button class="btn-primary" onclick="finishPay('card')">✓ Pago aceptado</button>
+    </div>
+  </div>
+</div>
+
+<!-- COBRO (mixto) -->
+<div class="overlay" id="splitM">
+  <div class="modal">
+    <h3>Pago mixto</h3>
+    <div class="amount" id="splitDue"></div>
+    <div class="split-section">
+      <div class="field"><label>TARJETA</label><input id="splitCard" type="number" step="0.01" oninput="updateSplit()"></div>
+      <div class="field"><label>EFECTIVO A COBRAR</label><input id="splitCashDue" disabled></div>
+      <div class="field"><label>EFECTIVO RECIBIDO</label><input id="splitCashRec" type="number" step="0.01" oninput="updateSplit()"></div>
+      <div class="field"><label>CAMBIO</label><input id="splitChange" disabled></div>
+    </div>
+    <div class="note">Cobra primero la parte de tarjeta en el datáfono.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('splitM')">Cancelar</button>
+      <button class="btn-primary" onclick="finishPay('split')">✓ Cobro completado</button>
+    </div>
+  </div>
+</div>
+
+<!-- PEDIDOS -->
+<div class="overlay" id="ordersM">
+  <div class="modal wide">
+    <h3>Pedidos</h3>
+    <div class="orders-cols">
+      <div class="ocol"><h4>🟠 Pendientes</h4><div id="pending"></div></div>
+      <div class="ocol"><h4>🔵 Preparados</h4><div id="prepared"></div></div>
+      <div class="ocol"><h4>🟢 Entregados</h4><div id="delivered"></div></div>
+    </div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('ordersM')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- APARCADOS -->
+<div class="overlay" id="parkM">
+  <div class="modal">
+    <h3>Pedidos aparcados</h3>
+    <div id="parkList"></div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('parkM')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- AGOTADOS -->
+<div class="overlay" id="soldM">
+  <div class="modal wide">
+    <h3>Productos agotados / disponibilidad</h3>
+    <div class="sold-list" id="soldList"></div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('soldM')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- ALÉRGENOS consulta -->
+<div class="overlay" id="allergensM">
+  <div class="modal wide">
+    <h3>⚠️ Información de alérgenos</h3>
+    <div class="sub">Consulta rápida para atención al cliente.</div>
+    <div id="currentOrderAllergens"></div>
+    <div class="note bad">⚠ La información marcada como «PENDIENTE» no debe considerarse definitiva hasta comprobar etiquetas y fichas técnicas.</div>
+    <h4 style="margin-top:12px">Carta</h4>
+    <div style="overflow:auto"><table><thead><tr><th>Producto</th><th>Contiene</th><th>Trazas</th><th>Estado</th></tr></thead><tbody id="allergenTable"></tbody></table></div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('allergensM')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- ALÉRGENOS editor -->
+<div class="overlay" id="allergenEditM">
+  <div class="modal wide">
+    <h3>⚠️ Editar alérgenos</h3>
+    <div class="sub">Usa únicamente la etiqueta o ficha técnica real del ingrediente.</div>
+    <div class="forms">
+      <div class="field"><label>TIPO</label><select id="allergenEntityType" onchange="fillAllergenEntities()"><option value="product">Producto de la carta</option><option value="cream">Crema / extra</option></select></div>
+      <div class="field"><label>PRODUCTO / EXTRA</label><select id="allergenEntity" onchange="loadAllergenEntity()"></select></div>
+    </div>
+    <div class="allergen-editor-box">
+      <div class="allergen-editor-grid">
+        <div><b>CONTIENE</b><div class="sub">Alérgenos presentes como ingredientes.</div><div class="allergen-checks" id="containsChecks"></div></div>
+        <div><b>PUEDE CONTENER TRAZAS</b><div class="sub">Solo si la etiqueta lo indica.</div><div class="allergen-checks" id="tracesChecks"></div></div>
+      </div>
+      <div style="margin-top:10px">
+        <label class="allergen-check" style="display:inline-flex"><input type="checkbox" id="allergenVerified"> <span><b>Información verificada</b><br><small>He comprobado etiquetas/fichas técnicas.</small></span></label>
+      </div>
+      <div class="field" style="margin-top:10px"><label>NOTA INTERNA / FUENTE</label><textarea class="allergen-note" id="allergenNote" placeholder="Ej. Revisado en etiqueta del cubo de crema…"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('allergenEditM')">Cerrar</button>
+      <button class="btn-primary" onclick="saveAllergenEntity()">Guardar alérgenos</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK -->
+<div class="overlay" id="stockM">
+  <div class="modal wide">
+    <h3>📦 Stock real</h3>
+    <div class="sub">Activa el control solo en los productos que quieras contar. El stock se descuenta al cobrar y se repone al anular.</div>
+    <div class="kpis" id="stockKPIs"></div>
+    <div class="note">Los packs y combos descuentan sus productos reales: Pack 6 → 6 Mini Rolls; Combo Apertura → 1 Clásico + café elegido; Pack 2 Premium → los dos sabores seleccionados.</div>
+    <div class="stock-list" id="stockList"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="setAllStockTracking(false)">Desactivar control en todos</button>
+      <button class="btn-primary" onclick="saveStock()">Guardar stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- VENTAS -->
+<div class="overlay" id="salesM">
+  <div class="modal wide">
+    <h3>Ventas de la jornada</h3>
+    <div class="sub" id="salesBusinessDay"></div>
+    <div class="kpis" id="salesKPIs"></div>
+    <div style="overflow:auto"><table><thead><tr><th>Ticket</th><th>Hora</th><th>Productos</th><th>Descuento</th><th>Pago</th><th class="num">Total</th><th>Acción</th></tr></thead><tbody id="salesRows"></tbody></table></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="exportCSV()">CSV</button>
+      <button class="btn-cancel" onclick="exportBackup()">Copia JSON</button>
+      <button class="btn-primary" onclick="closeM('salesM')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CIERRE -->
+<div class="overlay" id="closeM">
+  <div class="modal wide">
+    <h3>Cierre de caja</h3>
+    <div class="sub" id="closeBusinessDay"></div>
+    <div class="kpis" id="closeKPIs"></div>
+    <div class="forms">
+      <div class="field"><label>FONDO INICIAL</label><input id="closeFloat" disabled></div>
+      <div class="field"><label>EFECTIVO ESPERADO</label><input id="expectedCash" disabled></div>
+      <div class="field"><label>EFECTIVO CONTADO</label><input id="countedCash" type="number" step="0.01" oninput="updateDiff()"></div>
+      <div class="field"><label>DIFERENCIA</label><input id="diffCash" disabled></div>
+    </div>
+    <div id="diffNote"></div>
+    <h4 style="margin-top:12px">Detalle por producto</h4>
+    <div style="overflow:auto"><table><thead><tr><th>Producto</th><th>Variante/opciones</th><th class="num">Uds.</th><th class="num">Importe</th></tr></thead><tbody id="prodSum"></tbody></table></div>
+    <h4 style="margin-top:10px">Extras / cremas</h4>
+    <div style="overflow:auto"><table><tbody id="extraSum"></tbody></table></div>
+    <h4 style="margin-top:10px">Descuentos comerciales</h4>
+    <div style="overflow:auto"><table><thead><tr><th>Descuento</th><th class="num">Usos</th><th class="num">Total descontado</th></tr></thead><tbody id="discountCloseSum"></tbody></table></div>
+    <h4 style="margin-top:10px">Stock restante</h4>
+    <div style="overflow:auto"><table><thead><tr><th>Producto</th><th class="num">Stock</th><th>Estado</th></tr></thead><tbody id="closeStockSum"></tbody></table></div>
+    <div id="backupState" style="margin-top:10px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="exportCSV()">1. CSV</button>
+      <button class="btn-cancel" onclick="exportBackup()">2. Copia JSON</button>
+      <button class="btn-primary" onclick="closeM('closeM')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DESCUENTOS -->
+<div class="overlay" id="discountM">
+  <div class="modal">
+    <h3>🏷️ Descuento comercial</h3>
+    <div class="sub">Selecciona el descuento que presenta el cliente. Solo se aplica uno por ticket.</div>
+    <div id="discountChoices" class="discount-grid"></div>
+    <div id="noDiscountsMsg" class="note" style="display:none">No hay descuentos activos. Créalos en Administración → Descuentos.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="removeDiscount();closeM('discountM')">Quitar descuento</button>
+      <button class="btn-primary" onclick="closeM('discountM')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DESCUENTOS ADMIN -->
+<div class="overlay" id="discountAdminM">
+  <div class="modal wide">
+    <h3>🏷️ Descuentos comerciales</h3>
+    <div class="sub">Crea botones para tarjetas, cupones o promociones.</div>
+    <div style="border:0.5px solid #d8cfc5;border-radius:10px;padding:12px;margin-bottom:12px">
+      <h4 style="margin-top:0;margin-bottom:8px">Añadir descuento</h4>
+      <div class="forms">
+        <div class="field"><label>NOMBRE</label><input id="newDiscountName" placeholder="Ej. Tarjeta promo -1 €"></div>
+        <div class="field"><label>TIPO</label><select id="newDiscountType" onchange="refreshNewDiscountLabels()"><option value="fixed">Dinero (€)</option><option value="percent">Porcentaje (%)</option></select></div>
+        <div class="field"><label id="newDiscountValueLabel">DESCUENTO (€)</label><input id="newDiscountValue" type="number" min="0" step="0.01"></div>
+        <div class="field"><label>GASTO MÍNIMO (€)</label><input id="newDiscountMin" type="number" min="0" step="0.01" value="0"></div>
+        <div class="field"><label>MÁXIMO DESCUENTO (€)</label><input id="newDiscountMax" type="number" min="0" step="0.01" placeholder="Opcional para %"></div>
+        <div class="field"><label>ESTADO</label><select id="newDiscountEnabled"><option value="1">Activo</option><option value="0">Inactivo</option></select></div>
+      </div>
+      <div class="modal-actions" style="margin-top:8px"><button class="btn-primary" onclick="addDiscountConfig()">Añadir</button></div>
+    </div>
+    <div class="discount-row" style="font-size:10px;font-weight:700;color:#888"><span>ESTADO</span><span>NOMBRE</span><span>TIPO</span><span>VALOR</span><span>MÍNIMO</span><span>MÁXIMO</span><span></span></div>
+    <div id="discountConfigRows"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('discountAdminM')">Cerrar</button>
+      <button class="btn-primary" onclick="saveDiscountConfigs()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="overlay" id="adminM">
+  <div class="modal">
+    <h3>Administración</h3>
+    <div class="note">PIN admin: <b id="adminPinNote">1234</b>. Cámbialo en Configuración.</div>
+    <div class="admin-opts" style="margin-top:12px">
+      <button class="admin-opt" onclick="adminGo('close')">📊 Cierre de caja</button>
+      <button class="admin-opt" onclick="adminGo('settings')">⚙️ Configuración carta</button>
+      <button class="admin-opt" onclick="adminGo('sales')">🧾 Revisar ventas</button>
+      <button class="admin-opt" onclick="adminGo('stock')">📦 Stock real</button>
+      <button class="admin-opt" onclick="adminGo('allergens')">⚠️ Editar alérgenos</button>
+      <button class="admin-opt" onclick="adminGo('discounts')">🏷️ Descuentos comerciales</button>
+      <button class="admin-opt" onclick="adminGo('backup')">💾 Copia de seguridad</button>
+      <button class="admin-opt" onclick="adminGo('users')">👤 Gestión de usuarios</button>
+    </div>
+    <div class="modal-actions"><button class="btn-primary" onclick="closeM('adminM')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="settingsM">
+  <div class="modal wide">
+    <h3>Configuración</h3>
+    <div class="modal-actions" style="justify-content:flex-start;margin:0 0 12px">
+      <button class="btn-cancel" onclick="openAllergenEditor()">⚠️ Gestionar alérgenos</button>
+    </div>
+    <div class="forms">
+      <div class="field"><label>NOMBRE DEL LOCAL</label><input id="storeName"></div>
+      <div class="field"><label>FONDO INICIAL (€)</label><input id="float" type="number" step="0.01"></div>
+      <div class="field"><label>PIN ADMIN</label><input id="pin" type="password"></div>
+      <div class="field"><label>OBJETIVO REGALOS HORCUS</label><input id="target" type="number" min="1"></div>
+    </div>
+    <h4 style="margin-top:14px">Añadir producto</h4>
+    <div style="border:0.5px solid #d8cfc5;border-radius:10px;padding:12px">
+      <div class="forms">
+        <div class="field"><label>NOMBRE</label><input id="newName"></div>
+        <div class="field"><label>PRECIO (€)</label><input id="newPrice" type="number" step="0.01"></div>
+        <div class="field"><label>APARTADO</label><select id="newCat" onchange="toggleNewCat()"></select></div>
+        <div class="field" id="newCatField" style="display:none"><label>NUEVO APARTADO</label><input id="newCatName"></div>
+        <div class="field"><label>DESCRIPCIÓN</label><input id="newDesc"></div>
+        <div class="field"><label>OPCIÓN AUTOMÁTICA</label>
+          <select id="newPreset" onchange="toggleCustomCream()">
+            <option value="none">Sin opciones</option>
+            <option value="coffee">Normal / descafeinado</option>
+            <option value="cream080">Crema extra +0,80 €</option>
+            <option value="cream100">Crema extra +1,00 €</option>
+            <option value="creamCustom">Crema precio personalizado</option>
+          </select>
+        </div>
+        <div class="field" id="customCreamField" style="display:none"><label>PRECIO CREMA (€)</label><input id="newCream" type="number" step="0.01" value="0.80"></div>
+        <div class="field"><label>ACCESO RÁPIDO</label><select id="newQuick"><option value="0">No</option><option value="1">Sí</option></select></div>
+      </div>
+      <div class="modal-actions"><button class="btn-primary" onclick="addNewProduct()">Añadir a la carta</button></div>
+    </div>
+    <h4 style="margin-top:14px">Carta actual</h4>
+    <datalist id="catList"></datalist>
+    <div id="settingsRows"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="resetCatalog()">Restaurar carta inicial</button>
+      <button class="btn-cancel" onclick="importBackup()">Importar JSON</button>
+      <button class="btn-primary" onclick="saveSettings()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- FLASH -->
+<div class="fullorder" id="fullOrder" onclick="hideFlash()">
+  <div><small>PEDIDO</small><b id="flashNo"></b><small>Toca para cerrar</small></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ======= SCRIPT ======= -->
+<script>
+const money=n=>(Number(n)||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'});
+const uid=()=>Math.random().toString(36).slice(2,10);
+const clone=x=>JSON.parse(JSON.stringify(x));
+const BUSINESS_CUTOFF_HOUR=6;
+
+const calendarKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const dayKey=()=>{const d=new Date();d.setHours(d.getHours()-BUSINESS_CUTOFF_HOUR);return calendarKey(d)};
+const businessDayText=()=>{const [y,m,d]=dayKey().split('-');const start=new Date(Number(y),Number(m)-1,Number(d));const end=new Date(start);end.setDate(end.getDate()+1);return `${start.toLocaleDateString('es-ES')} · hasta las ${String(BUSINESS_CUTOFF_HOUR).padStart(2,'0')}:00 del ${end.toLocaleDateString('es-ES')}`};
+
+const CREAMS=['Sin crema extra','Kinder','Pistacho','Oreo','Nutella','Lotus','Dulce de leche'];
+const PACK6_CREAMS=['Original (gratis)','Kinder','Pistacho','Oreo','Nutella','Lotus','Dulce de leche'];
+const ALLERGENS=['Gluten','Crustáceos','Huevos','Pescado','Cacahuetes','Soja','Leche','Frutos de cáscara','Apio','Mostaza','Sésamo','Sulfitos','Altramuces','Moluscos'];
+const ALLERGEN_ICONS={'Gluten':'🌾','Crustáceos':'🦐','Huevos':'🥚','Pescado':'🐟','Cacahuetes':'🥜','Soja':'🫘','Leche':'🥛','Frutos de cáscara':'🌰','Apio':'🌿','Mostaza':'🟡','Sésamo':'⚪','Sulfitos':'SO₂','Altramuces':'🌼','Moluscos':'🐚'};
+const EXTRA_NAMES=['Kinder','Pistacho','Oreo','Nutella','Lotus','Dulce de leche'];
+
+const DEFAULT=[
+  {id:'mini',cat:'Rolls',name:'Mini Roll',desc:'Solo canela · frosting original gratis',price:1.20},
+  {id:'pack6_mini',cat:'Rolls',name:'Pack 6 Mini Rolls',desc:'Original gratis · otras cremas +1,50 € cada una',price:6.50,creamPrice:1.50},
+  {id:'clasico',cat:'Rolls',name:'Clásico',desc:'Canela · frosting original gratis · cremas extra +1,00 €',price:3.20,quick:true,creamPrice:1},
+  {id:'pack2_classic',cat:'Rolls',name:'Pack 2 Clásicos',desc:'2 clásicos · cremas extra +1,00 € cada una',price:6,packCreamPrice:1},
+  {id:'premium_kinder',cat:'Premium',name:'Premium · Kinder',desc:'Temporada · cremas extra +0,80 €',price:4.20,creamPrice:.8},
+  {id:'premium_pistacho',cat:'Premium',name:'Premium · Pistacho',desc:'Temporada · cremas extra +0,80 €',price:4.20,creamPrice:.8},
+  {id:'premium_cheesecake',cat:'Premium',name:'Premium · Cheesecake',desc:'Temporada · cremas extra +0,80 €',price:4.20,creamPrice:.8},
+  {id:'pack2_premium',cat:'Premium',name:'Pack 2 Premium',price:8,mods:[{label:'Premium 1',options:['Kinder','Pistacho','Cheesecake']},{label:'Premium 2',options:['Kinder','Pistacho','Cheesecake']}]},
+  {id:'pack2_premium_cream',cat:'Premium',name:'Pack 2 Premium + crema',price:9,mods:[{label:'Premium 1',options:['Kinder','Pistacho','Cheesecake']},{label:'Premium 2',options:['Kinder','Pistacho','Cheesecake']},{label:'Crema extra',options:['Kinder','Pistacho','Oreo','Nutella','Lotus','Dulce de leche']}]},
+  {id:'fit_chocolate',cat:'FitRolls',name:'FitRoll · Chocolate',desc:'18 g proteína · cremas extra +0,80 €',price:4.50,creamPrice:.8},
+  {id:'fit_vainilla',cat:'FitRolls',name:'FitRoll · Vainilla y Canela',desc:'18 g proteína · cremas extra +0,80 €',price:4.50,creamPrice:.8},
+  {id:'horcus',cat:'Horcus',name:'Horcus Roll',price:4.80,quick:true},
+  {id:'horcus_fit',cat:'Horcus',name:'Horcus Fit',desc:'18 g de proteína',price:4.80},
+  {id:'combo_apertura',cat:'Combos',name:'Combo Apertura',desc:'Clásico + café',price:4.50,quick:true,creamPrice:1,mods:[{label:'Café',options:['Solo','Con leche','Cortado','Bombón','Manchado']},{label:'Tipo de café',options:['Normal','Descafeinado']}]},
+  {id:'combo_horcus_cafe',cat:'Combos',name:'Combo Horcus',desc:'Horcus Roll o Fit + café',price:6.20,quick:true,horcusPromo:true,mods:[{label:'Elige Horcus',options:['Horcus Roll','Horcus Fit']},{label:'Café',options:['Solo','Con leche','Cortado','Bombón','Manchado']},{label:'Tipo de café',options:['Normal','Descafeinado']}]},
+  {id:'combo_horcus_refresco',cat:'Combos',name:'Combo Horcus + refresco',desc:'Horcus + refresco (+0,50 €)',price:6.70,horcusPromo:true,mods:[{label:'Elige Horcus',options:['Horcus Roll','Horcus Fit']},{label:'Refresco',options:['Coca-Cola','Coca-Cola Zero','Coca-Cola Zero Zero','Nestea','Aquarius','Zumo melocotón','Fanta Naranja','Fanta Limón','Agua grande 1,5 L']}]},
+  {id:'combo_fit',cat:'Combos',name:'Combo Fit',desc:'FitRoll + Red Bull',price:6.50,quick:true,mods:[{label:'FitRoll',options:['Chocolate','Vainilla y Canela']},{label:'Red Bull',options:['Original','Sugar Free']}]},
+  ...['Coca-Cola','Coca-Cola Zero','Coca-Cola Zero Zero','Nestea','Aquarius','Zumo melocotón','Fanta Naranja','Fanta Limón'].map((n,i)=>({id:'drink'+i,cat:'Bebidas',name:n,price:1.80})),
+  {id:'agua15',cat:'Bebidas',name:'Agua grande 1,5 L',price:1.80},
+  {id:'agua05',cat:'Bebidas',name:'Agua mediana 0,5 L',price:1.20},
+  {id:'rb',cat:'Bebidas',name:'Red Bull',price:2.20},
+  {id:'rbsf',cat:'Bebidas',name:'Red Bull Sugar Free',price:2.20},
+  {id:'solo',cat:'Cafés',name:'Café solo',price:1.30,coffee:true},
+  {id:'leche',cat:'Cafés',name:'Café con leche',price:1.60,coffee:true},
+  {id:'cortado',cat:'Cafés',name:'Cortado',price:1.60,coffee:true},
+  {id:'bombon',cat:'Cafés',name:'Bombón',price:1.60,coffee:true},
+  {id:'manchado',cat:'Cafés',name:'Manchado',price:1.60,coffee:true}
+];
+
+// ══════════════════════════════
+// AUTH — SHA-256 + LOGIN
+// ══════════════════════════════
+async function sha256(msg){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+// Default: gerente / qULCoWGQUlrOi9S-
+const DEFAULT_USERS=[{username:'gerente',hash:'3c8e985b68a1f7b9caa93b6844cd6f0190f0de3e08c581558e8bd4836fc39e50'}];
+let users=JSON.parse(localStorage.nr_users_v1||'null')||clone(DEFAULT_USERS);
+function saveUsers(){localStorage.nr_users_v1=JSON.stringify(users)}
+let currentUser=null;
+let cajas=JSON.parse(localStorage.nr_cajas_v1||'{}');
+function saveCajas(){localStorage.nr_cajas_v1=JSON.stringify(cajas)}
+function getTodayCaja(){return cajas[dayKey()]||null}
+
+document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPass').focus()});
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('floatAmountInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmarAperturaCaja()});
+
+async function doLogin(){
+  const u=document.getElementById('loginUser').value.trim().toLowerCase();
+  const p=document.getElementById('loginPass').value;
+  if(!u||!p){document.getElementById('loginErr').classList.add('show');return}
+  const h=await sha256(p);
+  const match=users.find(x=>x.username.toLowerCase()===u&&x.hash===h);
+  if(!match){document.getElementById('loginErr').classList.add('show');document.getElementById('loginPass').value='';return}
+  document.getElementById('loginErr').classList.remove('show');
+  currentUser=match.username;
+  if(!getTodayCaja()){
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('cajaRequiredBox').style.display='block';
+    setTimeout(()=>document.getElementById('floatAmountInput').focus(),100);
+  } else {enterApp()}
+}
+function updateCajaPreview(){document.getElementById('cajaPreview').textContent=money(Number(document.getElementById('floatAmountInput').value||0))}
+function confirmarAperturaCaja(){
+  const v=Number(document.getElementById('floatAmountInput').value||0);
+  if(isNaN(v)||v<0){alert('Introduce un importe válido');return}
+  cajas[dayKey()]={float:v,openedAt:new Date().toISOString(),openedBy:currentUser};
+  saveCajas();enterApp();
+}
+function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  renderCajaStatus();render();
+}
+function doLogout(){
+  if(!confirm('¿Cerrar sesión?'))return;
+  currentUser=null;
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginBox').style.display='block';
+  document.getElementById('cajaRequiredBox').style.display='none';
+  document.getElementById('loginUser').value='';document.getElementById('loginPass').value='';
+  document.getElementById('loginErr').classList.remove('show');
+  document.querySelectorAll('.overlay.show').forEach(x=>x.classList.remove('show'));
+}
+function renderCajaStatus(){
+  const c=getTodayCaja();
+  const el=document.getElementById('cajaStatus');
+  if(el)el.textContent=c?`💵 ${c.openedBy||'—'} · ${money(c.float)}`:'';
+}
+
+// USERS ADMIN
+function openUsersAdmin(){renderUsersList();openM('usersM')}
+function renderUsersList(){document.getElementById('usersList').innerHTML=users.map((u,i)=>`<div class="user-row"><div><b>${esc(u.username)}</b>${u.username==='gerente'?'<span style="font-size:10px;color:#888;margin-left:6px">Cuenta principal</span>':''}</div>${u.username!=='gerente'?`<button class="btn-sm" style="color:#c0392b" onclick="deleteUser(${i})">Eliminar</button>`:'<span style="font-size:10px;color:#aaa">No eliminable</span>'}</div>`).join('')}
+async function addUser(){const n=document.getElementById('newUserName').value.trim().toLowerCase(),p=document.getElementById('newUserPass').value;if(!n){toast('Escribe un nombre');return}if(p.length<6){toast('Contraseña mínimo 6 caracteres');return}if(users.find(u=>u.username===n)){toast('Usuario ya existe');return}const h=await sha256(p);users.push({username:n,hash:h});saveUsers();document.getElementById('newUserName').value='';document.getElementById('newUserPass').value='';renderUsersList();toast('Usuario añadido')}
+function deleteUser(i){if(users[i].username==='gerente'){toast('No se puede eliminar gerente');return}if(!confirm(`¿Eliminar ${users[i].username}?`))return;users.splice(i,1);saveUsers();renderUsersList();toast('Usuario eliminado')}
+
+// ══════════════════════════════
+// PRINT TICKET
+// ══════════════════════════════
+function buildTicketHTML(sale,items){
+  const caja=getTodayCaja();
+  const ticketNum='#'+String(sale.ticket).padStart(3,'0');
+  const fecha=new Date(sale.ts).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
+  const mPago=payLabel(sale);
+  let h=`<div style="font-family:'Courier New',monospace;font-size:12px;width:72mm;padding:4mm;color:#000">`;
+  h+=`<div style="text-align:center;font-size:16px;font-weight:900">${esc(store.name||'NiceRolls')}</div>`;
+  h+=`<div style="text-align:center;font-size:10px;margin-bottom:4px">${ticketNum}  ·  ${fecha}</div>`;
+  if(currentUser)h+=`<div style="text-align:center;font-size:10px;margin-bottom:4px">Atendido por: ${esc(currentUser)}</div>`;
+  h+=`<div style="border-top:1px dashed #000;margin:4px 0"></div>`;
+  items.forEach(i=>{
+    h+=`<div style="display:flex;justify-content:space-between"><span>${i.qty>1?i.qty+'×  ':''}${esc(i.name)}</span><span>${money(i.unitPrice*i.qty)}</span></div>`;
+    if(i.modText)h+=`<div style="font-size:10px;padding-left:10px;color:#333">${esc(i.modText)}</div>`;
+  });
+  h+=`<div style="border-top:1px dashed #000;margin:4px 0"></div>`;
+  if(sale.discount&&sale.discountAmount>0)h+=`<div style="display:flex;justify-content:space-between"><span>${esc(sale.discount.name)}</span><span>−${money(sale.discountAmount)}</span></div>`;
+  h+=`<div style="display:flex;justify-content:space-between;font-weight:900;font-size:14px"><span>TOTAL</span><span>${money(sale.total)}</span></div>`;
+  h+=`<div style="border-top:1px dashed #000;margin:4px 0"></div>`;
+  h+=`<div style="display:flex;justify-content:space-between"><span>Pago</span><span>${mPago}</span></div>`;
+  if(sale.method==='cash'&&sale.change>0){h+=`<div style="display:flex;justify-content:space-between"><span>Entregado</span><span>${money(sale.received)}</span></div>`;h+=`<div style="display:flex;justify-content:space-between;font-weight:700"><span>Cambio</span><span>${money(sale.change)}</span></div>`}
+  h+=`<div style="border-top:1px dashed #000;margin:4px 0"></div>`;
+  h+=`<div style="text-align:center;font-size:10px">¡Gracias por tu visita!</div>`;
+  h+=`</div>`;
+  return h;
+}
+function buildPreviewHTML(sale,items){
+  const ticketNum='#'+String(sale.ticket).padStart(3,'0');
+  const fecha=new Date(sale.ts).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
+  const mPago=payLabel(sale);
+  let h=`<div class="pp-big">${esc(store.name||'NiceRolls')}</div>`;
+  h+=`<div class="pp-center" style="font-size:10px;margin-bottom:3px">${ticketNum} · ${fecha}</div>`;
+  if(currentUser)h+=`<div class="pp-center" style="font-size:10px">Atendido por: ${esc(currentUser)}</div>`;
+  h+=`<div class="pp-line"></div>`;
+  items.forEach(i=>{h+=`<div class="pp-row"><span>${i.qty>1?i.qty+'×  ':''}${esc(i.name)}</span><span>${money(i.unitPrice*i.qty)}</span></div>`;if(i.modText)h+=`<div class="pp-mods">${esc(i.modText)}</div>`});
+  h+=`<div class="pp-line"></div>`;
+  if(sale.discount&&sale.discountAmount>0)h+=`<div class="pp-row"><span>${esc(sale.discount.name)}</span><span>−${money(sale.discountAmount)}</span></div>`;
+  h+=`<div class="pp-row pp-bold" style="font-size:13px"><span>TOTAL</span><span>${money(sale.total)}</span></div>`;
+  h+=`<div class="pp-line"></div>`;
+  h+=`<div class="pp-row"><span>Pago</span><span>${mPago}</span></div>`;
+  if(sale.method==='cash'&&sale.change>0){h+=`<div class="pp-row"><span>Entregado</span><span>${money(sale.received)}</span></div>`;h+=`<div class="pp-row pp-bold"><span>Cambio</span><span>${money(sale.change)}</span></div>`}
+  h+=`<div class="pp-line"></div>`;
+  h+=`<div class="pp-center" style="font-size:10px">¡Gracias por tu visita!</div>`;
+  return h;
+}
+function showPrintModal(sale,items){
+  document.getElementById('printPreview').innerHTML=buildPreviewHTML(sale,items);
+  document.getElementById('printArea').innerHTML=buildTicketHTML(sale,items);
+  openM('printM');
+}
+function doPrint(){closeM('printM');setTimeout(()=>window.print(),80)}
+
+// ── STATE ──
+let store=JSON.parse(localStorage.nr_store_v3||'null')||{name:'NiceRolls',openingFloat:0,adminPin:'1234',horcusTarget:50};
+let catalog=JSON.parse(localStorage.nr_catalog_v3||'null')||clone(DEFAULT);
+let sales=JSON.parse(localStorage.nr_sales_v3||'{}');
+let orders=JSON.parse(localStorage.nr_orders_v3||'[]');
+let parked=JSON.parse(localStorage.nr_parked_v3||'[]');
+let cart=[],currentCat='Rolls',pp=null,sel={},activeDiscount=null;
+if(!Array.isArray(store.discounts))store.discounts=[];
+
+// ── ALLERGEN EXTRAS INIT ──
+if(!store.allergenExtras)store.allergenExtras={};
+EXTRA_NAMES.forEach(n=>{if(!store.allergenExtras[n])store.allergenExtras[n]={allergens:[],traces:[],verified:false,note:'Pendiente de revisar etiqueta/ficha técnica.'}});
+localStorage.nr_store_v3=JSON.stringify(store);
+
+// ── ALLERGEN MIGRATION ──
+const ROLL_BASE_IDS=['mini','pack6_mini','clasico','pack2_classic','premium_kinder','premium_pistacho','premium_cheesecake','pack2_premium','pack2_premium_cream','fit_chocolate','fit_vainilla','horcus','horcus_fit','combo_apertura','combo_horcus_cafe','combo_horcus_refresco','combo_fit'];
+catalog.forEach(p=>{
+  if(!Array.isArray(p.allergens)){p.allergens=ROLL_BASE_IDS.includes(p.id)?['Gluten','Huevos','Leche']:[];p.traces=[];p.allergenVerified=false;p.allergenNote=ROLL_BASE_IDS.includes(p.id)?'Datos mínimos conocidos por la masa. Revisar rellenos, coberturas y fichas de proveedor.':'Pendiente de comprobar etiqueta/ficha técnica.'}
+  if(!Array.isArray(p.traces))p.traces=[];
+  if(p.allergenVerified===undefined)p.allergenVerified=false;
+});
+let _pist=catalog.find(p=>p.id==='premium_pistacho');if(_pist&&!_pist.allergens.includes('Frutos de cáscara'))_pist.allergens.push('Frutos de cáscara');
+if(!store.allergenExtras['Pistacho'].allergens.includes('Frutos de cáscara'))store.allergenExtras['Pistacho'].allergens.push('Frutos de cáscara');
+['leche','cortado','bombon','manchado'].forEach(id=>{let p=catalog.find(x=>x.id===id);if(p&&!p.allergens.includes('Leche'))p.allergens.push('Leche')});
+
+// ── PRICE MIGRATION ──
+{const upd=[['pack6_mini',{creamPrice:1.50}],['clasico',{creamPrice:1.00}],['pack2_classic',{packCreamPrice:1.00}],['fit_chocolate',{creamPrice:.8}],['fit_vainilla',{creamPrice:.8}],['premium_kinder',{creamPrice:.8}],['premium_pistacho',{creamPrice:.8}],['premium_cheesecake',{creamPrice:.8}]];
+upd.forEach(([id,vals])=>{let p=catalog.find(x=>x.id===id);if(p)Object.assign(p,vals)});
+let _mini=catalog.find(p=>p.id==='mini');if(_mini){delete _mini.creamPrice;delete _mini.packCreamPrice}}
+localStorage.nr_store_v3=JSON.stringify(store);localStorage.nr_catalog_v3=JSON.stringify(catalog);
+
+// ── MIDNIGHT MIGRATION ──
+function migrateMidnightSales(){const now=new Date();if(now.getHours()>=BUSINESS_CUTOFF_HOUR)return;const cal=calendarKey(now),biz=dayKey();if(cal===biz||!Array.isArray(sales[cal])||!sales[cal].length)return;const moving=sales[cal].filter(x=>{const t=new Date(x.ts);return !Number.isNaN(t.getTime())&&t.getHours()<BUSINESS_CUTOFF_HOUR});if(!moving.length)return;const moveIds=new Set(moving.map(x=>x.id));const existing=Array.isArray(sales[biz])?sales[biz]:[];const existingIds=new Set(existing.map(x=>x.id));const merged=[...existing,...moving.filter(x=>!existingIds.has(x.id))].sort((a,b)=>new Date(a.ts)-new Date(b.ts));merged.forEach((sale,i)=>{sale.ticket=i+1;orders.filter(o=>o.saleId===sale.id).forEach(o=>o.ticket=sale.ticket)});sales[biz]=merged;const remaining=sales[cal].filter(x=>!moveIds.has(x.id));if(remaining.length)sales[cal]=remaining;else delete sales[cal];save()}
+migrateMidnightSales();
+
+// ── HELPERS ──
+const ts=()=>new Date().toISOString();
+const today=()=>sales[dayKey()]||[];
+const valid=()=>today().filter(s=>!s.voided);
+const nextTicket=()=>today().length+1;
+const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const cats=()=>[...new Set(catalog.filter(p=>p.enabled!==false).map(p=>p.cat))];
+const stockTracked=p=>p&&p.trackStock===true;
+const stockValue=p=>Math.max(0,Number(p?.stock||0));
+const stockLowAt=p=>Math.max(0,Number(p?.lowStockAt??5));
+const stockBlocked=p=>stockTracked(p)&&stockValue(p)<=0;
+const unavailable=p=>!!p?.soldOut||stockBlocked(p);
+
+function save(){localStorage.nr_store_v3=JSON.stringify(store);localStorage.nr_catalog_v3=JSON.stringify(catalog);localStorage.nr_sales_v3=JSON.stringify(sales);localStorage.nr_orders_v3=JSON.stringify(orders);localStorage.nr_parked_v3=JSON.stringify(parked)}
+function toast(s){let t=document.getElementById('toast');t.textContent=s;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),1600)}
+function openM(id){document.getElementById(id).classList.add('show')}
+function closeM(id){document.getElementById(id).classList.remove('show')}
+function toggleFull(){document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.()}
+function toggleCart(v){document.getElementById('cartPanel').classList.toggle('mobile',v)}
+
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})},1000);
+
+// ── RIGHT PANEL SWITCHING ──
+function switchRight(id){
+  ['ticket','ec','ap','fin'].forEach(p=>{
+    document.getElementById('panel-'+p).classList.remove('show');
+    document.getElementById('rt-'+p).classList.remove('on');
+  });
+  document.getElementById('panel-'+id).classList.add('show');
+  document.getElementById('rt-'+id).classList.add('on');
+  if(id==='ap')renderRightParked();
+  if(id==='ec')renderRightEC();
+  if(id==='fin')renderRightFin();
+}
+function renderRightEC(){
+  const ids=new Set(Object.values(sales).flat().filter(s=>!s.voided).map(s=>s.id));
+  const ec=orders.filter(o=>ids.has(o.saleId)&&['pending','prepared'].includes(o.status));
+  document.getElementById('list-ec').innerHTML=ec.map(o=>`
+    <div class="ped-card">
+      <div class="ped-card-top"><span class="ped-num">#${String(o.ticket).padStart(3,'0')}</span><span class="ped-badge ec">En curso</span></div>
+      <div class="ped-items">${o.items.map(i=>`${i.qty}× ${esc(i.name)}`).join(', ')}</div>
+    </div>`).join('')||'<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">Sin pedidos en curso</div>';
+}
+function renderRightParked(){
+  document.getElementById('list-ap').innerHTML=parked.map(p=>`
+    <div class="ped-card">
+      <div class="ped-card-top"><span class="ped-num">Aparcado #${p.n}</span><span class="ped-badge ap">Aparcado</span></div>
+      <div class="ped-items">${esc(p.items.map(i=>`${i.qty}× ${i.name}`).join(', '))}</div>
+      <div class="ped-total">${money(p.total)}</div>
+      <div class="ped-rec" onclick="resumeFromRight('${p.id}')">↩ Recuperar al ticket</div>
+    </div>`).join('')||'<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">Sin pedidos aparcados</div>';
+}
+function resumeFromRight(id){let p=parked.find(x=>x.id===id);if(cart.length){if(!confirm('¿Aparcar pedido actual?'))return;parkCart(true)}cart=clone(p.items);activeDiscount=p.discount?clone(p.discount):null;parked=parked.filter(x=>x.id!==id);save();render();switchRight('ticket');toast('Pedido recuperado')}
+function renderRightFin(){
+  const day=valid().slice(-20).reverse();
+  document.getElementById('list-fin').innerHTML=day.map(s=>{
+    const p=parts(s);
+    const mBadge=s.method==='cash'?'<span class="ped-badge ef">Efectivo</span>':s.method==='card'?'<span class="ped-badge tj">Tarjeta</span>':'<span class="ped-badge mx">Mixto</span>';
+    const cambio=s.change>0?` · Cambio: ${money(s.change)}`:'';
+    return `<div class="ped-card">
+      <div class="ped-card-top"><span class="ped-num">#${String(s.ticket).padStart(3,'0')}</span><div style="display:flex;gap:3px">${mBadge}<span class="ped-badge fin">Cobrado</span></div></div>
+      <div class="ped-items">${esc(s.items.map(i=>`${i.qty}× ${i.name}`).join(', '))}</div>
+      <div class="ped-total">${money(s.total)}${cambio}</div>
+    </div>`;
+  }).join('')||'<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">Sin ventas hoy</div>';
+}
+
+// ── RENDER ──
+function render(){
+  let cs=cats();if(!cs.includes(currentCat))currentCat=cs[0]||'';
+  document.getElementById('cats').innerHTML=cs.map(c=>`<button class="cat-btn${c===currentCat?' on':''}" onclick="currentCat='${c.replaceAll("'","\\'")}';render()">${esc(c)}</button>`).join('');
+  document.getElementById('quick').innerHTML=catalog.filter(p=>p.quick&&p.enabled!==false).slice(0,5).map(p=>`<button class="${unavailable(p)?'sold':''}" onclick="pick('${p.id}')">${esc(p.name)}<small>${unavailable(p)?(stockBlocked(p)?'STOCK 0':'AGOTADO'):money(p.price)}</small>${stockTracked(p)&&!unavailable(p)?`<small>${stockValue(p)} uds.</small>`:''}</button>`).join('');
+  document.getElementById('products').innerHTML=catalog.filter(p=>p.cat===currentCat&&p.enabled!==false).map(p=>`
+    <button class="prod${unavailable(p)?' sold':''}" onclick="pick('${p.id}')">
+      ${unavailable(p)?`<span class="tag">${stockBlocked(p)?'STOCK 0':'AGOTADO'}</span>`:(p.cat==='Premium'?'<span class="tag seasonal">Temporada</span>':'')}
+      <div><b>${esc(p.name)}</b><small>${esc(p.desc||'')}</small>${allergenCard(p)}${stockBadge(p)}</div>
+      <span class="price">${money(p.price)}</span>
+    </button>`).join('');
+  renderCart();renderBadges();renderHorcus();updateMetrics();
+}
+
+function stockBadge(p){if(!stockTracked(p))return '';let n=stockValue(p),cl=n<=0?'zero':n<=stockLowAt(p)?'low':'ok';return `<small class="stockbadge ${cl}">Stock: ${n} uds.</small>`}
+function allergenCard(p){let a=(p.allergens||[]).slice(0,4),txt=a.map(x=>ALLERGEN_ICONS[x]||'⚠').join(' ');let extra=(p.allergens||[]).length>4?' +':'';let st=p.allergenVerified?'<span class="allergen-ok">OK</span>':'<span class="allergen-pending">REVISAR</span>';return `<span class="allergen-short">${txt?txt+extra:'Sin alérgenos declarados'}</span>${st}`}
+
+// ── PRODUCT PICK ──
+function pick(id){
+  let p=catalog.find(x=>x.id===id);if(!p)return;
+  if(p.soldOut){toast('Producto agotado');return}
+  if(stockBlocked(p)){toast(`${p.name}: no queda stock`);return}
+  pp=p;sel={};let mods=clone(p.mods||[]);
+  if(p.coffee)mods.push({label:'Tipo de café',options:['Normal','Descafeinado']});
+  if(p.creamPrice!==undefined){let v=Number(p.creamPrice);if(p.id==='pack6_mini'){let opts=PACK6_CREAMS;mods.push({label:`Cremas para el Pack 6 · Original gratis · otras +${money(v)} cada una`,multi:true,pack6Original:true,options:opts,priceMap:Object.fromEntries(opts.map(c=>[c,c==='Original (gratis)'?0:v]))})}else{mods.push({label:`Cremas extra (+${money(v)} cada una)`,multi:true,options:CREAMS,priceMap:Object.fromEntries(CREAMS.map(c=>[c,c==='Sin crema extra'?0:v]))})}}
+  if(p.packCreamPrice!==undefined){let v=Number(p.packCreamPrice);mods.push({label:`Cremas extra para los 2 (+${money(v)} cada una)`,multi:true,options:CREAMS,priceMap:Object.fromEntries(CREAMS.map(c=>[c,c==='Sin crema extra'?0:v]))})}
+  if(!mods.length){push(p,[],0);return}
+  pp._mods=mods;document.getElementById('modTitle').textContent=p.name;
+  mods.forEach((m,i)=>{if(m.multi)sel[i]=m.pack6Original?['Original (gratis)']:[]});
+  document.getElementById('modBody').innerHTML=mods.map((m,i)=>`
+    <div style="margin:12px 0">
+      <b>${esc(m.label)}</b>
+      ${m.multi?'<span class="multihelp">Puedes elegir varias. La Original es gratis en el Pack 6.</span>':''}
+      <div class="opts" style="margin-top:6px">
+        ${m.options.map(o=>`<button class="opt ${m.multi&&((!m.pack6Original&&o==='Sin crema extra')||(m.pack6Original&&o==='Original (gratis)'))?'none-sel':''}" id="o_${i}_${encodeURIComponent(o)}" onclick="${m.multi?`chooseMulti(${i},'${o.replaceAll("'","\\'")}')`:`choose(${i},'${o.replaceAll("'","\\'")}')`}">${esc(o)}</button>`).join('')}
+      </div>
+    </div>`).join('');
+  openM('modM');
+}
+function choose(i,o){sel[i]=o;pp._mods[i].options.forEach(x=>document.getElementById(`o_${i}_${encodeURIComponent(x)}`)?.classList.toggle('sel',x===o))}
+function chooseMulti(i,o){let m=pp._mods[i],a=Array.isArray(sel[i])?sel[i]:[];if(!m.pack6Original&&o==='Sin crema extra')a=[];else if(a.includes(o))a=a.filter(x=>x!==o);else a.push(o);if(m.pack6Original&&a.length===0)a=['Original (gratis)'];sel[i]=a;m.options.forEach(x=>{let el=document.getElementById(`o_${i}_${encodeURIComponent(x)}`);if(!el)return;el.classList.remove('sel','multi-sel','none-sel');if(!m.pack6Original&&x==='Sin crema extra'&&a.length===0)el.classList.add('none-sel');if(m.pack6Original&&x==='Original (gratis)'&&a.includes(x))el.classList.add('none-sel');if((m.pack6Original?x!=='Original (gratis)':x!=='Sin crema extra')&&a.includes(x))el.classList.add('multi-sel')})}
+function confirmMod(){for(let i=0;i<pp._mods.length;i++){let m=pp._mods[i];if(!m.multi&&sel[i]===undefined){toast('Falta elegir: '+m.label);return}}let extra=0,parts=[];pp._mods.forEach((m,i)=>{if(m.multi){let a=Array.isArray(sel[i])?sel[i]:[],fallback=m.pack6Original?'Original (gratis)':'Sin crema extra';parts.push(`${m.label.replace(/\s*\([^)]*\)/g,'')}: ${a.length?a.join(' + '):fallback}`);a.forEach(v=>extra+=m.priceMap?.[v]||0)}else{let v=sel[i];parts.push(`${m.label.replace(/\s*\([^)]*\)/g,'')}: ${v}`);extra+=m.priceMap?.[v]||0}});push(pp,parts,extra);closeM('modM')}
+function push(p,parts,extra){let mt=parts.join(' · '),up=Number(p.price)+Number(extra||0),e=cart.find(x=>x.id===p.id&&x.modText===mt&&x.unitPrice===up);if(e)e.qty++;else cart.push({lineId:uid(),id:p.id,name:p.name,unitPrice:up,qty:1,modText:mt,horcusPromo:!!p.horcusPromo});renderCart();toast('Añadido')}
+
+// ── CART ──
+function subtotal(){return cart.reduce((s,x)=>s+x.unitPrice*x.qty,0)}
+function discountAmount(d=activeDiscount,base=subtotal()){if(!d)return 0;let min=Math.max(0,Number(d.minSpend||0));if(base+0.0001<min)return 0;let a=d.type==='percent'?base*Math.max(0,Number(d.value||0))/100:Math.max(0,Number(d.value||0));let mx=Number(d.maxDiscount||0);if(d.type==='percent'&&mx>0)a=Math.min(a,mx);return Math.min(base,Math.max(0,Number(a.toFixed(2))))}
+function validateActiveDiscount(){if(activeDiscount&&subtotal()+0.0001<Number(activeDiscount.minSpend||0))activeDiscount=null}
+function total(){validateActiveDiscount();return Math.max(0,Number((subtotal()-discountAmount()).toFixed(2)))}
+
+function renderCart(){
+  document.getElementById('ticketNo').textContent='#'+String(nextTicket()).padStart(3,'0');
+  const cl=document.getElementById('cartList');
+  cl.innerHTML=cart.length?cart.map(i=>`
+    <div class="item">
+      <div>
+        <b>${esc(i.name)}</b>
+        ${i.modText?`<div class="item-mods">${esc(i.modText)}</div>`:''}
+        <div class="item-actions">
+          <button class="qty-btn" onclick="chg('${i.lineId}',-1)">−</button>
+          <span class="qty-val">${i.qty}</span>
+          <button class="qty-btn" onclick="chg('${i.lineId}',1)">+</button>
+          <button class="rm-btn" onclick="rm('${i.lineId}')">Eliminar</button>
+        </div>
+      </div>
+      <b style="white-space:nowrap">${money(i.unitPrice*i.qty)}</b>
+    </div>`).join(''):'<div class="cart-empty"><span style="font-size:28px">🧾</span><span>Pedido vacío<br><small>Pulsa un producto</small></span></div>';
+  renderDiscount();
+  document.getElementById('total').textContent=money(total());
+}
+function chg(id,d){let x=cart.find(i=>i.lineId===id);x.qty+=d;if(x.qty<=0)rm(id);else renderCart()}
+function rm(id){cart=cart.filter(i=>i.lineId!==id);renderCart()}
+function clearCart(){if(cart.length&&confirm('¿Vaciar pedido?')){cart=[];activeDiscount=null;renderCart()}}
+
+function renderDiscount(){
+  validateActiveDiscount();
+  if(activeDiscount){
+    document.getElementById('discountSummary').innerHTML=`<div class="discount-summary"><span>🏷️ ${esc(activeDiscount.name)}</span><span style="color:#2f7d4a">−${money(discountAmount())}</span></div>`;
+    document.getElementById('discountButton').classList.add('active');
+    document.getElementById('discountButton').innerHTML=`🏷️ ${esc(activeDiscount.name)}`;
+    document.getElementById('discountRemove').style.display='block';
+  }else{
+    document.getElementById('discountSummary').innerHTML='';
+    document.getElementById('discountButton').classList.remove('active');
+    document.getElementById('discountButton').innerHTML='🏷️ Descuento comercial';
+    document.getElementById('discountRemove').style.display='none';
+  }
+}
+function openDiscounts(){let a=(store.discounts||[]).filter(d=>d.enabled!==false);document.getElementById('noDiscountsMsg').style.display=a.length?'none':'block';document.getElementById('discountChoices').innerHTML=a.map(d=>{let ok=subtotal()+0.0001>=Number(d.minSpend||0),val=d.type==='percent'?`${Number(d.value)} %`:`−${money(d.value)}`,cap=d.type==='percent'&&Number(d.maxDiscount||0)>0?` · máx. ${money(d.maxDiscount)}`:'';return `<button class="discount-choice" ${ok?'':'disabled'} onclick="applyDiscount('${d.id}')"><b>${esc(d.name)}</b><span class="dvalue">${val}</span><span class="dmin">${Number(d.minSpend||0)>0?`Desde ${money(d.minSpend)}`:'Sin gasto mínimo'}${cap}</span></button>`}).join('');openM('discountM')}
+function applyDiscount(id){let d=(store.discounts||[]).find(x=>x.id===id);if(!d)return;if(subtotal()+0.0001<Number(d.minSpend||0)){toast(`Gasto mínimo ${money(d.minSpend)}`);return}activeDiscount=clone(d);renderCart();closeM('discountM');toast('Descuento aplicado')}
+function removeDiscount(){activeDiscount=null;renderCart()}
+
+// ── METRICS (header) ──
+function updateMetrics(){
+  const m=metrics();
+  document.getElementById('m-count').textContent=m.tickets;
+  document.getElementById('m-ef').textContent=money(m.cash);
+  document.getElementById('m-tj').textContent=money(m.card);
+  document.getElementById('m-avg').textContent=m.tickets?money(m.avg):'— €';
+}
+function metrics(){let a=valid(),cash=0,card=0,total=0,discounts=0;a.forEach(s=>{total+=Number(s.total||0);discounts+=Number(s.discountAmount||0);let p=parts(s);cash+=p.cash;card+=p.card});return{tickets:a.length,cash,card,total,discounts,avg:a.length?total/a.length:0}}
+function parts(s){return s.method==='cash'?{cash:s.cashAmount??s.total,card:0}:s.method==='card'?{cash:0,card:s.cardAmount??s.total}:{cash:s.cashAmount||0,card:s.cardAmount||0}}
+function payLabel(s){let p=parts(s);return s.method==='cash'?'Efectivo':s.method==='card'?'Tarjeta':`Mixto ${money(p.cash)} + ${money(p.card)}`}
+
+// ── PAYMENT ──
+function startPay(m){
+  if(!cart.length){toast('Pedido vacío');return}
+  if(!validateStock())return;
+  const t=total();
+  if(m==='cash'){document.getElementById('cashDue').textContent=money(t);document.getElementById('cashRec').value='';document.getElementById('cashChange').textContent=money(0);document.getElementById('cashChangeBx').className='change-display';openM('cashM')}
+  if(m==='card'){document.getElementById('cardDue').textContent=money(t);openM('cardM')}
+  if(m==='split'){document.getElementById('splitDue').textContent=money(t);document.getElementById('splitCard').value='';document.getElementById('splitCashRec').value='';updateSplit();openM('splitM')}
+}
+function cashSet(v){document.getElementById('cashRec').value=v;updateCash()}
+function cashExact(){document.getElementById('cashRec').value=total().toFixed(2);updateCash()}
+function updateCash(){
+  const rec=Number(document.getElementById('cashRec').value||0),cambio=Math.max(0,rec-total());
+  document.getElementById('cashChange').textContent=money(cambio);
+  const bx=document.getElementById('cashChangeBx');
+  bx.className='change-display'+(rec>0&&rec<total()?' bad':'');
+}
+function updateSplit(){let c=Math.max(0,Number(document.getElementById('splitCard').value||0)),due=Math.max(0,total()-c),r=Math.max(0,Number(document.getElementById('splitCashRec').value||0));document.getElementById('splitCashDue').value=money(due);document.getElementById('splitChange').value=money(Math.max(0,r-due))}
+
+function finishPay(m){
+  if(!validateStock())return;
+  let gross=Number(subtotal().toFixed(2)),discAmt=Number(discountAmount().toFixed(2)),disc=activeDiscount?clone(activeDiscount):null,t=Number(total().toFixed(2)),cash=0,card=0,rec=null,change=0;
+  if(m==='cash'){rec=Number(document.getElementById('cashRec').value||0);if(rec<t){toast('Falta efectivo');return}cash=t;change=rec-t}
+  if(m==='card')card=t;
+  if(m==='split'){card=Number(document.getElementById('splitCard').value||0);if(card<0||card>t){toast('Tarjeta incorrecta');return}cash=Number((t-card).toFixed(2));rec=Number(document.getElementById('splitCashRec').value||0);if(rec<cash){toast('Falta efectivo');return}change=rec-cash}
+  let moves=trackedStockMoves(cart);
+  let a=today(),sale={id:uid(),ticket:a.length+1,ts:ts(),items:clone(cart),subtotal:gross,discount:disc,discountAmount:discAmt,total:t,method:m,cashAmount:cash,cardAmount:card,received:rec,change,voided:false,stockMoves:clone(moves)};
+  applyStockMoves(moves,-1);
+  a.push(sale);sales[dayKey()]=a;
+  orders.push({id:uid(),saleId:sale.id,ticket:sale.ticket,ts:sale.ts,items:clone(cart),status:'pending'});
+  const _itemsForPrint=clone(cart);
+  cart=[];activeDiscount=null;save();
+  closeM(m==='cash'?'cashM':m==='card'?'cardM':'splitM');
+  render();flash(sale.ticket);
+  showPrintModal(sale,_itemsForPrint);
+}
+function flash(n){document.getElementById('flashNo').textContent='#'+String(n).padStart(3,'0');document.getElementById('fullOrder').classList.add('show');clearTimeout(window._ff);window._ff=setTimeout(hideFlash,1600)}
+function hideFlash(){document.getElementById('fullOrder').classList.remove('show')}
+
+// ── STOCK ──
+function stockRequirements(items){
+  let req={};
+  (items||[]).forEach(i=>{
+    const q=Number(i.qty||0),m=i.modText||'';
+    if(i.id==='pack6_mini'){addReq(req,'mini',6*q);return}
+    if(i.id==='pack2_classic'){addReq(req,'clasico',2*q);return}
+    if(i.id==='pack2_premium'||i.id==='pack2_premium_cream'){addReq(req,nameToId('premium',modVal(m,'Premium 1')),q);addReq(req,nameToId('premium',modVal(m,'Premium 2')),q);return}
+    if(i.id==='combo_apertura'){addReq(req,'clasico',q);addReq(req,nameToId('cafe',modVal(m,'Café')),q);return}
+    if(i.id==='combo_horcus_cafe'){addReq(req,nameToId('horcus',modVal(m,'Elige Horcus')),q);addReq(req,nameToId('cafe',modVal(m,'Café')),q);return}
+    if(i.id==='combo_horcus_refresco'){addReq(req,nameToId('horcus',modVal(m,'Elige Horcus')),q);addReq(req,nameToId('drink',modVal(m,'Refresco')),q);return}
+    if(i.id==='combo_fit'){addReq(req,nameToId('fit',modVal(m,'FitRoll')),q);addReq(req,nameToId('redbull',modVal(m,'Red Bull')),q);return}
+    addReq(req,i.id,q);
+  });
+  return req;
+}
+function addReq(req,id,n){if(!id||!n)return;req[id]=(req[id]||0)+Number(n)}
+function modVal(text,label){let p=(text||'').split(' · ').find(x=>x.trim().toLowerCase().startsWith(label.toLowerCase()+':'));return p?p.split(':').slice(1).join(':').trim():''}
+function nameToId(group,value){const maps={premium:{'Kinder':'premium_kinder','Pistacho':'premium_pistacho','Cheesecake':'premium_cheesecake'},cafe:{'Solo':'solo','Con leche':'leche','Cortado':'cortado','Bombón':'bombon','Manchado':'manchado'},horcus:{'Horcus Roll':'horcus','Horcus Fit':'horcus_fit'},fit:{'Chocolate':'fit_chocolate','Vainilla y Canela':'fit_vainilla','Vainilla & Canela':'fit_vainilla'},redbull:{'Original':'rb','Sugar Free':'rbsf'},drink:{'Coca-Cola':'drink0','Coca-Cola Zero':'drink1','Coca-Cola Zero Zero':'drink2','Nestea':'drink3','Aquarius':'drink4','Zumo melocotón':'drink5','Fanta Naranja':'drink6','Fanta Limón':'drink7','Agua grande 1,5 L':'agua15'}};return maps[group]?.[value]||null}
+function trackedStockMoves(items){let req=stockRequirements(items),moves={};Object.entries(req).forEach(([id,q])=>{let p=catalog.find(x=>x.id===id);if(stockTracked(p))moves[id]=q});return moves}
+function stockProblems(items){let req=stockRequirements(items),bad=[];Object.entries(req).forEach(([id,q])=>{let p=catalog.find(x=>x.id===id);if(stockTracked(p)&&stockValue(p)<q)bad.push(`${p.name}: quedan ${stockValue(p)} y necesitas ${q}`)});return bad}
+function applyStockMoves(moves,direction){Object.entries(moves||{}).forEach(([id,q])=>{let p=catalog.find(x=>x.id===id);if(!p)return;p.stock=Math.max(0,stockValue(p)+(Number(q)*Number(direction)))})}
+function validateStock(){let bad=stockProblems(cart);if(bad.length){alert('No hay stock suficiente:\n\n'+bad.join('\n'));return false}return true}
+
+// ── ALLERGENS ──
+function splitMods(text){let o={};(text||'').split(' · ').forEach(x=>{let i=x.indexOf(':');if(i>0)o[x.slice(0,i).trim()]=x.slice(i+1).trim()});return o}
+function productByNameGroup(group,value){return nameToId(group,value)}
+function allergenProfileById(id){let p=catalog.find(x=>x.id===id);return p?{allergens:p.allergens||[],traces:p.traces||[],verified:!!p.allergenVerified}:{allergens:[],traces:[],verified:false}}
+function mergeAllergenProfile(out,prof){(prof.allergens||[]).forEach(x=>out.allergens.add(x));(prof.traces||[]).forEach(x=>out.traces.add(x));if(!prof.verified)out.verified=false}
+function itemAllergenProfile(i){
+  let out={allergens:new Set(),traces:new Set(),verified:true},m=splitMods(i.modText||'');
+  const add=id=>mergeAllergenProfile(out,allergenProfileById(id));
+  if(i.id==='pack6_mini')add('mini');
+  else if(i.id==='pack2_classic')add('clasico');
+  else if(i.id==='pack2_premium'||i.id==='pack2_premium_cream'){add(productByNameGroup('premium',m['Premium 1']));add(productByNameGroup('premium',m['Premium 2']))}
+  else if(i.id==='combo_apertura'){add('clasico');add(productByNameGroup('cafe',m['Café']))}
+  else if(i.id==='combo_horcus_cafe'){add(productByNameGroup('horcus',m['Elige Horcus']));add(productByNameGroup('cafe',m['Café']))}
+  else if(i.id==='combo_horcus_refresco'){add(productByNameGroup('horcus',m['Elige Horcus']));add(productByNameGroup('drink',m['Refresco']))}
+  else if(i.id==='combo_fit'){add(productByNameGroup('fit',m['FitRoll']));add(productByNameGroup('redbull',m['Red Bull']))}
+  else add(i.id);
+  Object.entries(m).forEach(([k,v])=>{if(/crema/i.test(k)&&v&&v!=='Sin crema extra'){v.split(' + ').map(x=>x.trim()).filter(Boolean).forEach(c=>{if(store.allergenExtras[c])mergeAllergenProfile(out,store.allergenExtras[c])})}});
+  return{allergens:[...out.allergens],traces:[...out.traces],verified:out.verified}
+}
+function orderAllergenProfile(items){let out={allergens:new Set(),traces:new Set(),verified:true};(items||[]).forEach(i=>mergeAllergenProfile(out,itemAllergenProfile(i)));return{allergens:[...out.allergens],traces:[...out.traces],verified:out.verified}}
+function fmtAllergens(a){return (a||[]).length?(a||[]).map(x=>`${ALLERGEN_ICONS[x]||'⚠️'} ${esc(x)}`).join(' · '):'—'}
+function openAllergens(){
+  let prof=orderAllergenProfile(cart);
+  document.getElementById('currentOrderAllergens').innerHTML=cart.length?`<div class="allergen-summary"><small>ALÉRGENOS DEL PEDIDO ACTUAL</small><div style="font-size:17px;font-weight:700;margin-top:4px">${fmtAllergens(prof.allergens)}</div><div style="margin-top:5px"><b>Trazas:</b> ${fmtAllergens(prof.traces)}</div><div style="margin-top:6px">${prof.verified?'<span class="a-verified">DATOS VERIFICADOS</span>':'<span class="a-pending">HAY DATOS PENDIENTES</span>'}</div></div>`:`<div class="allergen-summary"><b>No hay pedido actual.</b></div>`;
+  document.getElementById('allergenTable').innerHTML=catalog.filter(p=>p.enabled!==false).map(p=>`<tr><td><b>${esc(p.name)}</b><br><small>${esc(p.cat)}</small></td><td>${fmtAllergens(p.allergens||[])}</td><td>${fmtAllergens(p.traces||[])}</td><td><span class="${p.allergenVerified?'a-verified':'a-pending'}">${p.allergenVerified?'OK':'PENDIENTE'}</span>${p.allergenNote?`<br><small>${esc(p.allergenNote)}</small>`:''}</td></tr>`).join('');
+  openM('allergensM');
+}
+function openAllergenEditor(id=null,type='product'){document.getElementById('allergenEntityType').value=type;fillAllergenEntities(id);openM('allergenEditM')}
+function fillAllergenEntities(selectId=null){let type=document.getElementById('allergenEntityType').value;if(type==='product'){document.getElementById('allergenEntity').innerHTML=catalog.map(p=>`<option value="${esc(p.id)}">${esc(p.cat)} · ${esc(p.name)}</option>`).join('');if(selectId&&catalog.some(p=>p.id===selectId))document.getElementById('allergenEntity').value=selectId}else{document.getElementById('allergenEntity').innerHTML=EXTRA_NAMES.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');if(selectId&&EXTRA_NAMES.includes(selectId))document.getElementById('allergenEntity').value=selectId}loadAllergenEntity()}
+function currentAllergenEntity(){if(document.getElementById('allergenEntityType').value==='product')return catalog.find(p=>p.id===document.getElementById('allergenEntity').value);return store.allergenExtras[document.getElementById('allergenEntity').value]}
+function loadAllergenEntity(){let e=currentAllergenEntity()||{allergens:[],traces:[],verified:false,note:''};document.getElementById('containsChecks').innerHTML=ALLERGENS.map((a,i)=>`<label class="allergen-check"><input type="checkbox" id="ac_${i}" ${e.allergens?.includes(a)?'checked':''}> ${ALLERGEN_ICONS[a]||'⚠️'} ${esc(a)}</label>`).join('');document.getElementById('tracesChecks').innerHTML=ALLERGENS.map((a,i)=>`<label class="allergen-check"><input type="checkbox" id="at_${i}" ${e.traces?.includes(a)?'checked':''}> ${ALLERGEN_ICONS[a]||'⚠️'} ${esc(a)}</label>`).join('');document.getElementById('allergenVerified').checked=!!(e.allergenVerified??e.verified);document.getElementById('allergenNote').value=e.allergenNote??e.note??''}
+function saveAllergenEntity(){let e=currentAllergenEntity();if(!e)return;e.allergens=ALLERGENS.filter((a,i)=>document.getElementById('ac_'+i).checked);e.traces=ALLERGENS.filter((a,i)=>document.getElementById('at_'+i).checked);if(document.getElementById('allergenEntityType').value==='product'){e.allergenVerified=document.getElementById('allergenVerified').checked;e.allergenNote=document.getElementById('allergenNote').value.trim()}else{e.verified=document.getElementById('allergenVerified').checked;e.note=document.getElementById('allergenNote').value.trim()}save();render();toast('Alérgenos guardados')}
+
+// ── ORDERS ──
+function renderBadges(){let n=orders.filter(o=>['pending','prepared'].includes(o.status)).length;document.getElementById('ordersBadge').textContent=n;document.getElementById('ordersBadge').style.display=n?'grid':'none';document.getElementById('parkBadge').textContent=parked.length;document.getElementById('parkBadge').style.display=parked.length?'grid':'none';document.getElementById('b-ec').textContent=n?`(${n})`:'';document.getElementById('b-ap').textContent=parked.length?`(${parked.length})`:'';}
+function ocard(o){let its=o.items.map(i=>`${i.qty}× ${esc(i.name)}`).join('<br>'),b=o.status==='pending'?`<button class="prep" onclick="setStatus('${o.id}','prepared')">PREPARADO</button>`:o.status==='prepared'?`<button onclick="setStatus('${o.id}','pending')">←</button> <button class="deliver" onclick="setStatus('${o.id}','delivered')">ENTREGADO</button>`:`<button onclick="setStatus('${o.id}','prepared')">Reabrir</button>`;return `<div class="ocard"><span class="on">#${String(o.ticket).padStart(3,'0')}</span><div class="oitems">${its}</div>${b}</div>`}
+function openOrders(){let ids=new Set(Object.values(sales).flat().filter(s=>!s.voided).map(s=>s.id)),os=orders.filter(o=>ids.has(o.saleId));document.getElementById('pending').innerHTML=os.filter(o=>o.status==='pending').map(ocard).join('')||'<small>Sin pedidos.</small>';document.getElementById('prepared').innerHTML=os.filter(o=>o.status==='prepared').map(ocard).join('')||'<small>Ninguno.</small>';document.getElementById('delivered').innerHTML=os.filter(o=>o.status==='delivered').slice(-10).reverse().map(ocard).join('')||'<small>Ninguno.</small>';openM('ordersM')}
+function setStatus(id,s){let o=orders.find(x=>x.id===id);o.status=s;save();renderBadges();openOrders()}
+
+// ── PARKED ──
+function parkCart(silent=false){if(!cart.length){if(!silent)toast('Pedido vacío');return}parked.push({id:uid(),n:parked.length?Math.max(...parked.map(x=>x.n||0))+1:1,ts:ts(),items:clone(cart),discount:activeDiscount?clone(activeDiscount):null,total:total()});cart=[];activeDiscount=null;save();render();if(!silent)toast('Pedido aparcado')}
+function openParked(){document.getElementById('parkList').innerHTML=parked.map(p=>`<div class="park-row"><div><b>Aparcado #${p.n}</b> · ${money(p.total)}<br><small>${esc(p.items.map(i=>`${i.qty}× ${i.name}`).join(', '))}</small></div><div style="display:flex;gap:5px"><button class="btn-sm" onclick="resume('${p.id}')">Recuperar</button><button class="btn-sm" style="color:#c0392b" onclick="delPark('${p.id}')">Borrar</button></div></div>`).join('')||'<div class="note">No hay pedidos aparcados.</div>';openM('parkM')}
+function resume(id){let p=parked.find(x=>x.id===id);if(cart.length){if(!confirm('¿Aparcar pedido actual?'))return;parkCart(true)}cart=clone(p.items);activeDiscount=p.discount?clone(p.discount):null;parked=parked.filter(x=>x.id!==id);save();render();closeM('parkM')}
+function delPark(id){if(confirm('¿Borrar aparcado?')){parked=parked.filter(x=>x.id!==id);save();openParked();renderBadges()}}
+
+// ── SOLD OUT ──
+function openSold(){document.getElementById('soldList').innerHTML=catalog.filter(p=>p.enabled!==false).map(p=>`<div class="sold-row"><div><b>${esc(p.name)}</b><br><small>${esc(p.cat)}${stockTracked(p)?` · stock ${stockValue(p)}`:''}</small></div><button style="background:${p.soldOut?'#fde8e8':'#e8f4eb'}" onclick="toggleSold('${p.id}')">${p.soldOut?'AGOTADO':(stockBlocked(p)?'STOCK 0':'DISPONIBLE')}</button></div>`).join('');openM('soldM')}
+function toggleSold(id){let p=catalog.find(x=>x.id===id);p.soldOut=!p.soldOut;save();render();openSold()}
+
+// ── STOCK PANEL ──
+function openStock(){renderStock();openM('stockM')}
+function renderStock(){
+  let controlled=catalog.filter(p=>p.enabled!==false&&stockTracked(p));
+  let low=controlled.filter(p=>stockValue(p)>0&&stockValue(p)<=stockLowAt(p)).length;
+  let zero=controlled.filter(p=>stockValue(p)<=0).length;
+  document.getElementById('stockKPIs').innerHTML=`<div class="kpi"><small>CONTROLADOS</small><b>${controlled.length}</b></div><div class="kpi"><small>STOCK TOTAL</small><b>${controlled.reduce((a,p)=>a+stockValue(p),0)} uds.</b></div><div class="kpi"><small>STOCK BAJO</small><b>${low}</b></div><div class="kpi"><small>AGOTADOS</small><b>${zero}</b></div>`;
+  document.getElementById('stockList').innerHTML=catalog.filter(p=>p.enabled!==false).map((p,i)=>{
+    let tracked=stockTracked(p),n=stockValue(p),lowAt=stockLowAt(p),state=!tracked?['SIN CONTROL','s-off']:n<=0?['AGOTADO','s-zero']:n<=lowAt?['BAJO','s-low']:['OK','s-ok'];
+    return `<div class="stock-row">
+      <div class="stock-name"><b>${esc(p.name)}</b><small>${esc(p.cat)}</small></div>
+      <select id="stk_on_${i}" onchange="stockToggleUI(${i})"><option value="0" ${!tracked?'selected':''}>Sin control</option><option value="1" ${tracked?'selected':''}>Controlar</option></select>
+      <input id="stk_qty_${i}" type="number" min="0" step="1" value="${n}" ${tracked?'':'disabled'} title="Stock actual">
+      <input id="stk_low_${i}" type="number" min="0" step="1" value="${lowAt}" ${tracked?'':'disabled'} title="Avisar cuando queden">
+      <div class="stock-btns"><button onclick="bumpStock(${i},-1)" ${tracked?'':'disabled'}>−1</button><button onclick="bumpStock(${i},1)" ${tracked?'':'disabled'}>+1</button><button onclick="bumpStock(${i},5)" ${tracked?'':'disabled'}>+5</button><span class="stock-state ${state[1]}">${state[0]}</span></div>
+    </div>`;
+  }).join('');
+}
+function stockToggleUI(i){let on=document.getElementById('stk_on_'+i).value==='1';document.getElementById('stk_qty_'+i).disabled=!on;document.getElementById('stk_low_'+i).disabled=!on}
+function bumpStock(i,d){let el=document.getElementById('stk_qty_'+i);if(!el||el.disabled)return;el.value=Math.max(0,Number(el.value||0)+d)}
+function saveStock(){catalog.forEach((p,i)=>{let on=document.getElementById('stk_on_'+i);if(!on)return;p.trackStock=on.value==='1';p.stock=Math.max(0,Math.floor(Number(document.getElementById('stk_qty_'+i).value||0)));p.lowStockAt=Math.max(0,Math.floor(Number(document.getElementById('stk_low_'+i).value||5)))});save();render();renderStock();toast('Stock guardado')}
+function setAllStockTracking(v){if(!confirm(v?'¿Activar control en todos?':'¿Desactivar control en todos?'))return;catalog.forEach(p=>p.trackStock=!!v);save();render();renderStock()}
+
+// ── SALES ──
+function kpis(m){return `<div class="kpi"><small>VENTAS NETAS</small><b>${money(m.total)}</b></div><div class="kpi"><small>DESCUENTOS</small><b>−${money(m.discounts)}</b></div><div class="kpi"><small>EFECTIVO</small><b>${money(m.cash)}</b></div><div class="kpi"><small>TARJETA</small><b>${money(m.card)}</b></div><div class="kpi"><small>TICKETS / TICKET MEDIO</small><b>${m.tickets} · ${money(m.avg)}</b></div>`}
+function openSales(){let m=metrics();document.getElementById('salesBusinessDay').textContent='Jornada: '+businessDayText();document.getElementById('salesKPIs').innerHTML=kpis(m);document.getElementById('salesRows').innerHTML=today().slice().reverse().map(s=>`<tr style="${s.voided?'opacity:.4;text-decoration:line-through':''}"><td>#${s.ticket}${s.voided?' ANULADO':''}</td><td>${new Date(s.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</td><td>${esc(s.items.map(i=>`${i.qty}× ${i.name}`).join(', '))}</td><td>${s.discount?`${esc(s.discount.name)}<br><small>−${money(s.discountAmount||0)}</small>`:'—'}</td><td>${esc(payLabel(s))}</td><td class="num">${money(s.total)}</td><td>${s.voided?'-':`<button class="btn-sm" onclick="reqRebuild('${s.id}')">Rehacer</button> <button class="btn-sm" onclick="reqVoid('${s.id}')">Anular</button>`}</td></tr>`).join('')||'<tr><td colspan="7">Sin ventas.</td></tr>';openM('salesM')}
+function requireAdmin(cb){let u=Number(sessionStorage.nr_admin_until||0);if(Date.now()<u){cb();return}let p=prompt('PIN de administración:');if(p===null)return;if(p===String(store.adminPin||'1234')){sessionStorage.nr_admin_until=Date.now()+600000;cb()}else alert('PIN incorrecto')}
+function reqVoid(id){requireAdmin(()=>voidSale(id))}
+function voidSale(id){let s=today().find(x=>x.id===id);if(!s||s.voided)return;if(confirm(`¿Anular ticket #${s.ticket}?`)){applyStockMoves(s.stockMoves||{},1);s.voided=true;orders.filter(o=>o.saleId===id).forEach(o=>o.status='voided');save();render();openSales();toast('Ticket anulado y stock repuesto')}}
+function reqRebuild(id){requireAdmin(()=>rebuild(id))}
+function rebuild(id){let s=today().find(x=>x.id===id);if(!s||s.voided)return;if(!confirm(`Se anulará el ticket #${s.ticket}, se repondrá su stock y volverá al pedido. ¿Continuar?`))return;if(cart.length)parkCart(true);applyStockMoves(s.stockMoves||{},1);s.voided=true;orders.filter(o=>o.saleId===id).forEach(o=>o.status='voided');cart=clone(s.items).map(i=>({...i,lineId:uid()}));activeDiscount=s.discount?clone(s.discount):null;save();render();closeM('salesM');toast('Ticket recuperado con stock repuesto')}
+
+// ── CIERRE ──
+function openClose(){
+  let m=metrics(),_caja=getTodayCaja(),_float=_caja?_caja.float:Number(store.openingFloat||0),exp=_float+m.cash;
+  document.getElementById('closeBusinessDay').textContent='Jornada: '+businessDayText()+' · Las ventas posteriores a medianoche siguen dentro de este cierre.';
+  document.getElementById('closeKPIs').innerHTML=kpis(m);
+  document.getElementById('closeFloat').value=money(_float);
+  document.getElementById('expectedCash').value=money(exp);
+  document.getElementById('countedCash').value='';
+  document.getElementById('diffCash').value='';
+  document.getElementById('diffNote').innerHTML='';
+  let map={};valid().forEach(s=>s.items.forEach(i=>{let k=i.id+'||'+(i.modText||'');if(!map[k])map[k]={name:i.name,mod:i.modText||'—',qty:0,amt:0};map[k].qty+=i.qty;map[k].amt+=i.unitPrice*i.qty}));
+  document.getElementById('prodSum').innerHTML=Object.values(map).sort((a,b)=>b.qty-a.qty).map(v=>`<tr><td>${esc(v.name)}</td><td>${esc(v.mod)}</td><td class="num">${v.qty}</td><td class="num">${money(v.amt)}</td></tr>`).join('')||'<tr><td colspan="4">Sin ventas.</td></tr>';
+  let ex={};valid().forEach(s=>s.items.forEach(i=>(i.modText||'').split(' · ').forEach(p=>{if(/crema/i.test(p)&&!/sin crema/i.test(p)){let v=p.split(':').slice(1).join(':').trim();v.split(' + ').map(x=>x.trim()).filter(Boolean).forEach(c=>ex[c]=(ex[c]||0)+i.qty)}})));
+  document.getElementById('extraSum').innerHTML=Object.entries(ex).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join('')||'<tr><td>Sin extras.</td></tr>';
+  let dc={};valid().forEach(s=>{if(s.discount&&Number(s.discountAmount||0)>0){let k=s.discount.name||'Descuento';if(!dc[k])dc[k]={uses:0,amount:0};dc[k].uses++;dc[k].amount+=Number(s.discountAmount||0)}});
+  document.getElementById('discountCloseSum').innerHTML=Object.entries(dc).sort((a,b)=>b[1].amount-a[1].amount).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.uses}</td><td class="num">−${money(v.amount)}</td></tr>`).join('')||'<tr><td colspan="3">Sin descuentos.</td></tr>';
+  document.getElementById('closeStockSum').innerHTML=catalog.filter(p=>p.enabled!==false&&stockTracked(p)).sort((a,b)=>stockValue(a)-stockValue(b)).map(p=>`<tr><td>${esc(p.name)}</td><td class="num">${stockValue(p)}</td><td>${stockValue(p)<=0?'AGOTADO':stockValue(p)<=stockLowAt(p)?'STOCK BAJO':'OK'}</td></tr>`).join('')||'<tr><td colspan="3">Sin stock controlado.</td></tr>';
+  document.getElementById('backupState').innerHTML=localStorage.nr_last_backup===dayKey()?'<div class="note good">✓ Copia JSON hecha para esta jornada.</div>':'<div class="note bad">⚠ Falta descargar la copia JSON de esta jornada.</div>';
+  openM('closeM');
+}
+function updateDiff(){let m=metrics(),_c=getTodayCaja(),_f=_c?_c.float:Number(store.openingFloat||0),exp=_f+m.cash,v=document.getElementById('countedCash').value;if(v===''){document.getElementById('diffCash').value='';document.getElementById('diffNote').innerHTML='';return}let d=Number(v)-exp;document.getElementById('diffCash').value=(d>=0?'+':'')+money(d);document.getElementById('diffNote').innerHTML=`<div class="note ${Math.abs(d)<.01?'good':'bad'}">${Math.abs(d)<.01?'✓ Caja cuadrada':`Diferencia: ${money(d)}`}</div>`}
+
+// ── HORCUS ──
+function renderHorcus(){let combos=0;Object.values(sales).flat().filter(s=>!s.voided).forEach(s=>s.items.forEach(i=>{if(i.horcusPromo||['combo_horcus_cafe','combo_horcus_refresco'].includes(i.id))combos+=i.qty}));const t=Math.max(1,Number(store.horcusTarget)||50);const gifts=Math.min(combos,t);const left=Math.max(0,t-gifts);document.getElementById('horcusText').textContent=`${gifts} / ${t} regalos Horcus`;document.getElementById('horcusBar').style.width=Math.min(100,gifts/t*100)+'%';document.getElementById('horcusLeft').textContent=left?`Quedan ${left}`:'¡AGOTADOS!'}
+
+// ── DISCOUNTS ADMIN ──
+function refreshNewDiscountLabels(){document.getElementById('newDiscountValueLabel').textContent=document.getElementById('newDiscountType').value==='percent'?'DESCUENTO (%)':'DESCUENTO (€)'}
+function openDiscountAdmin(){renderDiscountConfigs();openM('discountAdminM')}
+function renderDiscountConfigs(){document.getElementById('discountConfigRows').innerHTML=(store.discounts||[]).map((d,i)=>`<div class="discount-row"><select id="de${i}"><option value="1" ${d.enabled!==false?'selected':''}>Activo</option><option value="0" ${d.enabled===false?'selected':''}>Inactivo</option></select><input id="dn${i}" value="${esc(d.name)}"><select id="dt${i}"><option value="fixed" ${d.type==='fixed'?'selected':''}>€</option><option value="percent" ${d.type==='percent'?'selected':''}>%</option></select><input id="dv${i}" type="number" min="0" step="0.01" value="${Number(d.value||0)}"><input id="dm${i}" type="number" min="0" step="0.01" value="${Number(d.minSpend||0)}"><input id="dx${i}" type="number" min="0" step="0.01" value="${Number(d.maxDiscount||0)}"><button class="btn-danger" onclick="deleteDiscountConfig(${i})" style="padding:6px 8px">×</button></div>`).join('')||'<div class="note">Sin descuentos configurados.</div>'}
+function addDiscountConfig(){let name=document.getElementById('newDiscountName').value.trim(),type=document.getElementById('newDiscountType').value,value=Number(document.getElementById('newDiscountValue').value),min=Math.max(0,Number(document.getElementById('newDiscountMin').value||0)),max=Math.max(0,Number(document.getElementById('newDiscountMax').value||0));if(!name){toast('Escribe un nombre');return}if(!Number.isFinite(value)||value<=0){toast('Descuento incorrecto');return}if(type==='percent'&&value>100){toast('Máximo 100 %');return}store.discounts.push({id:'disc_'+Date.now(),name,type,value,minSpend:min,maxDiscount:max,enabled:document.getElementById('newDiscountEnabled').value==='1'});save();document.getElementById('newDiscountName').value='';document.getElementById('newDiscountValue').value='';document.getElementById('newDiscountMin').value='0';document.getElementById('newDiscountMax').value='';renderDiscountConfigs();toast('Descuento creado')}
+function saveDiscountConfigs(){(store.discounts||[]).forEach((d,i)=>{let e=document.getElementById('de'+i);if(!e)return;d.enabled=e.value==='1';d.name=document.getElementById('dn'+i).value.trim()||d.name;d.type=document.getElementById('dt'+i).value;d.value=Math.max(0,Number(document.getElementById('dv'+i).value||0));d.minSpend=Math.max(0,Number(document.getElementById('dm'+i).value||0));d.maxDiscount=Math.max(0,Number(document.getElementById('dx'+i).value||0))});save();renderDiscountConfigs();toast('Descuentos guardados')}
+function deleteDiscountConfig(i){if(confirm('¿Eliminar este descuento?')){store.discounts.splice(i,1);save();renderDiscountConfigs()}}
+
+// ── SETTINGS ──
+function openAdmin(){requireAdmin(()=>{document.getElementById('adminPinNote').textContent=store.adminPin||'1234';openM('adminM')})}
+function adminGo(a){closeM('adminM');if(a==='close')openClose();if(a==='settings')openSettings();if(a==='sales')openSales();if(a==='stock')openStock();if(a==='allergens')openAllergenEditor();if(a==='discounts')openDiscountAdmin();if(a==='backup')exportBackup();if(a==='users')openUsersAdmin()}
+function openSettings(){document.getElementById('storeName').value=store.name;document.getElementById('float').value=store.openingFloat||0;document.getElementById('pin').value=store.adminPin||'1234';document.getElementById('target').value=store.horcusTarget||50;fillCats();renderSettings();openM('settingsM')}
+function fillCats(){let c=cats();document.getElementById('catList').innerHTML=c.map(x=>`<option value="${esc(x)}">`).join('');document.getElementById('newCat').innerHTML=c.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__new__">+ Crear nuevo apartado…</option>'}
+function renderSettings(){document.getElementById('settingsRows').innerHTML=catalog.map((p,i)=>`<div class="settings-row"><select id="en${i}"><option value="1" ${p.enabled!==false?'selected':''}>Visible</option><option value="0" ${p.enabled===false?'selected':''}>Oculto</option></select><input id="nm${i}" value="${esc(p.name)}"><input id="ct${i}" list="catList" value="${esc(p.cat)}"><input id="pr${i}" type="number" step="0.01" value="${Number(p.price).toFixed(2)}"><select id="qk${i}"><option value="0" ${!p.quick?'selected':''}>Normal</option><option value="1" ${p.quick?'selected':''}>Rápido</option></select><button class="btn-sm" onclick="openAllergenEditor('${p.id}','product')">⚠️</button><button class="btn-danger" style="padding:5px 8px" onclick="delProduct(${i})">×</button></div>`).join('')}
+function toggleNewCat(){document.getElementById('newCatField').style.display=document.getElementById('newCat').value==='__new__'?'block':'none'}
+function toggleCustomCream(){document.getElementById('customCreamField').style.display=document.getElementById('newPreset').value==='creamCustom'?'block':'none'}
+function addNewProduct(){let n=document.getElementById('newName').value.trim(),p=Number(document.getElementById('newPrice').value),c=document.getElementById('newCat').value==='__new__'?document.getElementById('newCatName').value.trim():document.getElementById('newCat').value;if(!n||!c||!Number.isFinite(p)){toast('Completa nombre, precio y apartado');return}let x={id:'custom_'+Date.now(),cat:c,name:n,desc:document.getElementById('newDesc').value.trim(),price:p,quick:document.getElementById('newQuick').value==='1',allergens:[],traces:[],allergenVerified:false,allergenNote:'Pendiente de comprobar etiqueta/ficha técnica.'},pr=document.getElementById('newPreset').value;if(pr==='coffee')x.coffee=true;if(pr==='cream080')x.creamPrice=.8;if(pr==='cream100')x.creamPrice=1;if(pr==='creamCustom')x.creamPrice=Number(document.getElementById('newCream').value||0);catalog.push(x);save();document.getElementById('newName').value='';document.getElementById('newPrice').value='';document.getElementById('newDesc').value='';fillCats();renderSettings();render();toast('Producto añadido · revisa sus alérgenos');openAllergenEditor(x.id,'product')}
+function delProduct(i){if(confirm(`¿Eliminar ${catalog[i].name}?`)){catalog.splice(i,1);save();fillCats();renderSettings();render()}}
+function saveSettings(){catalog.forEach((p,i)=>{if(!document.getElementById('en'+i))return;p.enabled=document.getElementById('en'+i).value==='1';p.name=document.getElementById('nm'+i).value.trim()||p.name;p.cat=document.getElementById('ct'+i).value.trim()||p.cat;p.price=Number(document.getElementById('pr'+i).value||0);p.quick=document.getElementById('qk'+i).value==='1'});store.name=document.getElementById('storeName').value.trim()||'NiceRolls';store.openingFloat=Number(document.getElementById('float').value||0);store.adminPin=document.getElementById('pin').value.trim()||'1234';store.horcusTarget=Math.max(1,Number(document.getElementById('target').value)||50);save();render();closeM('settingsM');toast('Guardado')}
+function resetCatalog(){if(confirm('¿Restaurar carta inicial? Las ventas no se borran.')){catalog=clone(DEFAULT);save();fillCats();renderSettings();render()}}
+
+// ── EXPORT / IMPORT ──
+function exportCSV(){let rows=[['Fecha','Hora','Ticket','Producto','Opciones','Cantidad','Precio','Total línea','Subtotal ticket','Descuento','Importe descuento','Pago','Efectivo','Tarjeta','Ticket total','Anulado']];today().forEach(s=>s.items.forEach(i=>{let p=parts(s);rows.push([dayKey(),new Date(s.ts).toLocaleTimeString('es-ES'),s.ticket,i.name,i.modText||'',i.qty,i.unitPrice.toFixed(2),(i.unitPrice*i.qty).toFixed(2),Number(s.subtotal??s.total).toFixed(2),s.discount?.name||'',Number(s.discountAmount||0).toFixed(2),s.method,p.cash.toFixed(2),p.card.toFixed(2),Number(s.total).toFixed(2),s.voided?'SI':'NO'])}));download('\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(';')).join('\n'),`NiceRolls_ventas_${dayKey()}.csv`,'text/csv;charset=utf-8')}
+function exportBackup(){download(JSON.stringify({catalog,store,sales,orders,parked,cajas,exportedAt:ts()},null,2),`NiceRolls_backup_${dayKey()}.json`,'application/json');localStorage.nr_last_backup=dayKey();toast('Copia descargada')}
+function download(c,n,t){let b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function importBackup(){let i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=()=>{let r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);catalog=d.catalog||catalog;store=d.store||store;if(!Array.isArray(store.discounts))store.discounts=[];sales=d.sales||sales;orders=d.orders||orders;parked=d.parked||parked;if(d.cajas)cajas=d.cajas;save();saveCajas();render();closeM('settingsM');toast('Copia restaurada')}catch{alert('Archivo no válido')}};r.readAsText(i.files[0])};i.click()}
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown',e=>{
+  if(e.key==='F1'){e.preventDefault();startPay('cash')}
+  if(e.key==='F2'){e.preventDefault();startPay('card')}
+  if(e.key==='F3'){e.preventDefault();startPay('split')}
+  if(e.key==='Escape'){document.querySelectorAll('.overlay.show').forEach(x=>x.classList.remove('show'));hideFlash()}
+});
+document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)o.classList.remove('show')});
+
+// ── INIT ──
+render();
+</script>
+</body>
+</html>
