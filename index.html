@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>NiceRolls TPV v0.9.2 (beta)</title>
+<title>NiceRolls TPV v0.9.3 (beta)</title>
 <style>
 /* ── RESET & BASE ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -370,7 +370,7 @@ th{color:#888;font-size:10px;font-weight:700}
 <div class="overlay" id="usersM">
   <div class="modal">
     <h3>👤 Gestión de usuarios</h3>
-    <div class="sub">Contraseñas almacenadas con hash SHA-256.</div>
+    <div class="sub">Usuarios gestionados en el servidor.</div>
     <div id="usersList" style="margin-bottom:12px"></div>
     <div style="border:0.5px solid #d8cfc5;border-radius:10px;padding:12px">
       <h4 style="margin-bottom:10px">Añadir usuario</h4>
@@ -389,7 +389,7 @@ th{color:#888;font-size:10px;font-weight:700}
 <!-- HEADER -->
 <header>
   <div class="logo">NR</div>
-  <div class="brand">NiceRolls TPV <small>v0.9.2 beta</small></div>
+  <div class="brand">NiceRolls TPV <small>v0.9.3 beta</small></div>
   <div class="hmet"><span class="hmet-label">Pedidos</span><span class="hmet-val" id="m-count">0</span></div>
   <div class="hmet"><span class="hmet-label">Efectivo</span><span class="hmet-val green" id="m-ef">0,00 €</span></div>
   <div class="hmet"><span class="hmet-label">Tarjeta</span><span class="hmet-val blue" id="m-tj">0,00 €</span></div>
@@ -790,6 +790,154 @@ th{color:#888;font-size:10px;font-weight:700}
 
 <!-- ======= SCRIPT ======= -->
 <script>
+// ══════════════════════════════════════════════════════════
+// API LAYER v0.9.3 — todas las llamadas al backend pasan por aquí
+// Para volver a localStorage: cambiar API_BASE a null
+// ══════════════════════════════════════════════════════════
+const API_BASE = window.location.hostname === 'jaweewo.github.io'
+  ? null                          // GitHub Pages → modo localStorage (demo)
+  : '/api';                       // VPS → backend FastAPI
+
+let _apiToken = null;             // JWT guardado en memoria (no en localStorage)
+
+async function apiCall(method, path, body){
+  if(!API_BASE) return null;      // modo offline
+  const headers = {'Content-Type':'application/json'};
+  if(_apiToken) headers['Authorization'] = 'Bearer ' + _apiToken;
+  try {
+    const r = await fetch(API_BASE + path, {
+      method, headers,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if(r.status === 401){
+      // Token expirado — forzar re-login
+      _apiToken = null;
+      currentUser = null;
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('loginBox').style.display = 'block';
+      toast('Sesión expirada, vuelve a entrar');
+      return null;
+    }
+    if(!r.ok) return null;
+    return await r.json();
+  } catch(e) {
+    console.warn('API error:', e);
+    return null;
+  }
+}
+
+// ── LOGIN vía API ──────────────────────────────────────────
+async function apiLogin(username, password){
+  if(!API_BASE) return null;
+  try {
+    const r = await fetch(API_BASE + '/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    if(!r.ok) return null;
+    const d = await r.json();
+    return d.access_token || null;
+  } catch(e){ return null; }
+}
+
+// ── CATÁLOGO vía API ───────────────────────────────────────
+async function apiLoadCatalog(){
+  const data = await apiCall('GET', '/catalog');
+  if(!data || !Array.isArray(data)) return null;
+  // Normalizar campos API → formato interno
+  return data.map(p => ({
+    ...p,
+    soldOut:    p.sold_out ?? p.soldOut ?? false,
+    trackStock: p.track_stock ?? p.trackStock ?? false,
+    photo_url:  p.photo_url || null,
+  }));
+}
+
+async function apiUpdateProduct(id, fields){
+  return await apiCall('PATCH', `/catalog/${id}`, fields);
+}
+
+// ── FOTOS vía API ──────────────────────────────────────────
+async function apiUploadPhoto(productId, file){
+  if(!API_BASE || !_apiToken) return null;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch(`${API_BASE}/photos/${productId}`, {
+      method:'POST',
+      headers:{'Authorization':'Bearer ' + _apiToken},
+      body: fd
+    });
+    if(!r.ok) return null;
+    return await r.json();
+  } catch(e){ return null; }
+}
+
+async function apiDeletePhoto(productId){
+  return await apiCall('DELETE', `/photos/${productId}`);
+}
+
+// ── VENTAS vía API ─────────────────────────────────────────
+async function apiSaveSale(sale){
+  return await apiCall('POST', '/sales', {
+    ticket_num: sale.ticket,
+    day_key:    dayKey(),
+    items:      sale.items,
+    subtotal:   sale.subtotal ?? sale.total,
+    discount:   sale.discountAmount || 0,
+    total:      sale.total,
+    pay_method: sale.method || 'cash',
+    cash_given: sale.received || null,
+    change:     sale.change || null,
+    employee:   currentUser || null,
+    status:     'delivered'
+  });
+}
+
+// ── CAJA vía API ───────────────────────────────────────────
+async function apiOpenCaja(float_amount){
+  return await apiCall('POST', '/sales/cash-session', {
+    day_key:       dayKey(),
+    opening_float: float_amount,
+    opened_by:     currentUser || 'gerente'
+  });
+}
+
+async function apiGetCaja(dk){
+  return await apiCall('GET', `/sales/cash-session/${dk}`);
+}
+
+// ── PEDIDOS vía API ────────────────────────────────────────
+async function apiCreateOrder(order){
+  return await apiCall('POST', '/orders', {
+    ticket_num: order.ticket,
+    items:      order.items,
+    employee:   currentUser || null
+  });
+}
+
+async function apiUpdateOrder(apiId, fields){
+  return await apiCall('PATCH', `/orders/${apiId}`, fields);
+}
+
+async function apiDeleteOrder(apiId){
+  return await apiCall('DELETE', `/orders/${apiId}`);
+}
+
+// ── USUARIOS vía API ───────────────────────────────────────
+async function apiListUsers(){
+  return await apiCall('GET', '/auth/users');
+}
+
+async function apiCreateUser(username, password, is_admin=false){
+  return await apiCall('POST', '/auth/users', {username, password, is_admin});
+}
+
+async function apiDeleteUser(username){
+  return await apiCall('DELETE', `/auth/users/${username}`);
+}
+
 const money=n=>(Number(n)||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'});
 const uid=()=>Math.random().toString(36).slice(2,10);
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -856,23 +1004,56 @@ async function doLogin(){
   const u=document.getElementById('loginUser').value.trim().toLowerCase();
   const p=document.getElementById('loginPass').value;
   if(!u||!p){document.getElementById('loginErr').classList.add('show');return}
-  const h=await sha256(p);
-  const match=users.find(x=>x.username.toLowerCase()===u&&x.hash===h);
-  if(!match){document.getElementById('loginErr').classList.add('show');document.getElementById('loginPass').value='';return}
-  document.getElementById('loginErr').classList.remove('show');
-  currentUser=match.username;
-  if(!getTodayCaja()){
-    document.getElementById('loginBox').style.display='none';
-    document.getElementById('cajaRequiredBox').style.display='block';
-    setTimeout(()=>document.getElementById('floatAmountInput').focus(),100);
-  } else {enterApp()}
+  document.querySelector('.login-btn').textContent='Entrando…';
+  if(API_BASE){
+    // ── Modo API ──
+    const token = await apiLogin(u, p);
+    if(!token){
+      document.getElementById('loginErr').classList.add('show');
+      document.getElementById('loginPass').value='';
+      document.querySelector('.login-btn').textContent='Entrar al TPV';
+      return;
+    }
+    _apiToken = token;
+    currentUser = u;
+    document.getElementById('loginErr').classList.remove('show');
+    document.querySelector('.login-btn').textContent='Entrar al TPV';
+    // Cargar catálogo desde API
+    const apiCatalog = await apiLoadCatalog();
+    if(apiCatalog && apiCatalog.length) catalog = apiCatalog;
+    // Comprobar caja del día en API
+    const cajaDia = await apiGetCaja(dayKey());
+    if(!cajaDia){
+      document.getElementById('loginBox').style.display='none';
+      document.getElementById('cajaRequiredBox').style.display='block';
+      setTimeout(()=>document.getElementById('floatAmountInput').focus(),100);
+    } else {
+      cajas[dayKey()]={float:cajaDia.opening_float,openedAt:cajaDia.opened_at,openedBy:cajaDia.opened_by};
+      enterApp();
+    }
+  } else {
+    // ── Modo localStorage (demo / offline) ──
+    const h=await sha256(p);
+    const match=users.find(x=>x.username.toLowerCase()===u&&x.hash===h);
+    if(!match){document.getElementById('loginErr').classList.add('show');document.getElementById('loginPass').value='';document.querySelector('.login-btn').textContent='Entrar al TPV';return}
+    document.getElementById('loginErr').classList.remove('show');
+    currentUser=match.username;
+    document.querySelector('.login-btn').textContent='Entrar al TPV';
+    if(!getTodayCaja()){
+      document.getElementById('loginBox').style.display='none';
+      document.getElementById('cajaRequiredBox').style.display='block';
+      setTimeout(()=>document.getElementById('floatAmountInput').focus(),100);
+    } else {enterApp()}
+  }
 }
 function updateCajaPreview(){document.getElementById('cajaPreview').textContent=money(Number(document.getElementById('floatAmountInput').value||0))}
-function confirmarAperturaCaja(){
+async function confirmarAperturaCaja(){
   const v=Number(document.getElementById('floatAmountInput').value||0);
   if(isNaN(v)||v<0){alert('Introduce un importe válido');return}
   cajas[dayKey()]={float:v,openedAt:new Date().toISOString(),openedBy:currentUser};
-  saveCajas();enterApp();
+  saveCajas();
+  if(API_BASE) await apiOpenCaja(v);
+  enterApp();
 }
 function enterApp(){
   document.getElementById('loginScreen').style.display='none';
@@ -896,9 +1077,44 @@ function renderCajaStatus(){
 
 // USERS ADMIN
 function openUsersAdmin(){renderUsersList();openM('usersM')}
-function renderUsersList(){document.getElementById('usersList').innerHTML=users.map((u,i)=>`<div class="user-row"><div><b>${esc(u.username)}</b>${u.username==='gerente'?'<span style="font-size:10px;color:#888;margin-left:6px">Cuenta principal</span>':''}</div>${u.username!=='gerente'?`<button class="btn-sm" style="color:#c0392b" onclick="deleteUser(${i})">Eliminar</button>`:'<span style="font-size:10px;color:#aaa">No eliminable</span>'}</div>`).join('')}
-async function addUser(){const n=document.getElementById('newUserName').value.trim().toLowerCase(),p=document.getElementById('newUserPass').value;if(!n){toast('Escribe un nombre');return}if(p.length<6){toast('Contraseña mínimo 6 caracteres');return}if(users.find(u=>u.username===n)){toast('Usuario ya existe');return}const h=await sha256(p);users.push({username:n,hash:h});saveUsers();document.getElementById('newUserName').value='';document.getElementById('newUserPass').value='';renderUsersList();toast('Usuario añadido')}
-function deleteUser(i){if(users[i].username==='gerente'){toast('No se puede eliminar gerente');return}if(!confirm(`¿Eliminar ${users[i].username}?`))return;users.splice(i,1);saveUsers();renderUsersList();toast('Usuario eliminado')}
+async function renderUsersList(){
+  if(API_BASE){
+    const list = await apiListUsers();
+    if(list){
+      document.getElementById('usersList').innerHTML=list.map(u=>`<div class="user-row"><div><b>${esc(u.username)}</b>${u.username==='gerente'?'<span style="font-size:10px;color:#888;margin-left:6px">Cuenta principal</span>':''}</div>${u.username!=='gerente'?`<button class="btn-sm" style="color:#c0392b" onclick="deleteUser('${u.username}')">Eliminar</button>`:'<span style="font-size:10px;color:#aaa">No eliminable</span>'}</div>`).join('');
+      return;
+    }
+  }
+  document.getElementById('usersList').innerHTML=users.map((u,i)=>`<div class="user-row"><div><b>${esc(u.username)}</b>${u.username==='gerente'?'<span style="font-size:10px;color:#888;margin-left:6px">Cuenta principal</span>':''}</div>${u.username!=='gerente'?`<button class="btn-sm" style="color:#c0392b" onclick="deleteUser(${i})">Eliminar</button>`:'<span style="font-size:10px;color:#aaa">No eliminable</span>'}</div>`).join('');
+}
+async function addUser(){
+  const n=document.getElementById('newUserName').value.trim().toLowerCase();
+  const p=document.getElementById('newUserPass').value;
+  if(!n){toast('Escribe un nombre');return}
+  if(p.length<6){toast('Contraseña mínimo 6 caracteres');return}
+  if(API_BASE){
+    const res = await apiCreateUser(n, p);
+    if(!res){toast('Error al crear usuario (¿ya existe?)');return}
+  } else {
+    if(users.find(u=>u.username===n)){toast('Usuario ya existe');return}
+    const h=await sha256(p);users.push({username:n,hash:h});saveUsers();
+  }
+  document.getElementById('newUserName').value='';
+  document.getElementById('newUserPass').value='';
+  renderUsersList();toast('Usuario añadido');
+}
+async function deleteUser(ref){
+  const username = typeof ref==='string' ? ref : users[ref]?.username;
+  if(!username||username==='gerente'){toast('No se puede eliminar gerente');return}
+  if(!confirm(`¿Eliminar ${username}?`))return;
+  if(API_BASE){
+    await apiDeleteUser(username);
+  } else {
+    const i = users.findIndex(u=>u.username===username);
+    if(i>=0){users.splice(i,1);saveUsers();}
+  }
+  renderUsersList();toast('Usuario eliminado');
+}
 
 // ══════════════════════════════
 // PRINT TICKET
@@ -1142,7 +1358,7 @@ function render(){
   const unavailTag=p=>stockBlocked(p)?'STOCK 0':!comboHasValidOptions(p)?'NO DISP.':'AGOTADO';
   document.getElementById('quick').innerHTML=catalog.filter(p=>p.quick&&p.enabled!==false).slice(0,5).map(p=>`<button class="${unavailable(p)?'sold':''}" onclick="pick('${p.id}')">${esc(p.name)}<small>${unavailable(p)?unavailTag(p):money(p.price)}</small>${stockTracked(p)&&!unavailable(p)?`<small>${stockValue(p)} uds.</small>`:''}</button>`).join('');
   document.getElementById('products').innerHTML=catalog.filter(p=>p.cat===currentCat&&p.enabled!==false).map(p=>{
-    const foto=getPhoto(p.id);
+    const foto=p.photo_url || getPhoto(p.id);
     const imgHtml=foto
       ?`<img class="prod-img" src="${foto}" alt="${esc(p.name)}" loading="lazy">`
       :`<div class="prod-img-placeholder">🍞</div>`;
@@ -1291,6 +1507,7 @@ function finishPay(m){
   orders.push({id:uid(),saleId:sale.id,ticket:sale.ticket,ts:sale.ts,items:clone(cart),status:'pending'});
   const _itemsForPrint=clone(cart);
   cart=[];activeDiscount=null;save();
+  if(API_BASE) apiSaveSale(sale).catch(()=>{});
   closeM(m==='cash'?'cashM':m==='card'?'cardM':'splitM');
   render();flash(sale.ticket);
   showPrintModal(sale,_itemsForPrint);
@@ -1446,7 +1663,7 @@ function renderSettings(){
   document.getElementById('settingsRows').innerHTML=
     `<div style="font-size:10px;color:#888;padding:4px 0 6px">📷 Fotos: ${used} usados · Se guardan en este navegador</div>`+
     catalog.map((p,i)=>{
-      const foto=getPhoto(p.id);
+      const foto=p.photo_url || getPhoto(p.id);
       const thumbHtml=foto
         ?`<img class="photo-thumb" src="${foto}" alt="">`
         :`<div class="photo-thumb-placeholder" title="Sin foto">📷</div>`;
@@ -1469,41 +1686,51 @@ function uploadProductPhoto(id,input){
   const file=input.files[0];
   if(!file)return;
   if(!file.type.startsWith('image/')){toast('Selecciona una imagen');return}
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const img=new Image();
-    img.onload=()=>{
-      // Redimensionar a máximo 480px de ancho manteniendo proporción, calidad 0.82
-      const MAX=480;
-      let w=img.width,h=img.height;
-      if(w>MAX){h=Math.round(h*MAX/w);w=MAX}
-      const canvas=document.createElement('canvas');
-      canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const dataUrl=canvas.toDataURL('image/jpeg',0.82);
-      try{
-        setPhoto(id,dataUrl);
-        render();
-        renderSettings();
-        toast('Foto guardada · '+photoStorageInfo());
-      }catch(err){
-        if(err.name==='QuotaExceededError'){
-          toast('⚠ Sin espacio en el navegador. Borra alguna foto.');
-        }else{
-          toast('Error al guardar la foto');
-          console.error(err);
-        }
+  if(API_BASE){
+    // ── Modo API: subir directamente al servidor ──
+    toast('Subiendo foto…');
+    apiUploadPhoto(id, file).then(res=>{
+      if(res){
+        // Actualizar photo_url en catálogo local
+        const p=catalog.find(x=>x.id===id);
+        if(p) p.photo_url = `${API_BASE}/photos/${res.photo_path}`;
+        render();renderSettings();
+        toast('Foto guardada en servidor');
+      } else {
+        toast('Error al subir la foto');
       }
+    });
+  } else {
+    // ── Modo localStorage ──
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=480;
+        let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.82);
+        try{setPhoto(id,dataUrl);render();renderSettings();toast('Foto guardada · '+photoStorageInfo())}
+        catch(err){toast(err.name==='QuotaExceededError'?'⚠ Sin espacio. Borra alguna foto.':'Error al guardar la foto')}
+      };
+      img.src=e.target.result;
     };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  }
 }
 function removeProductPhoto(id){
-  removePhoto(id);
-  render();
-  renderSettings();
-  toast('Foto eliminada');
+  if(API_BASE){
+    apiDeletePhoto(id).then(()=>{
+      const p=catalog.find(x=>x.id===id);
+      if(p) p.photo_url=null;
+      render();renderSettings();toast('Foto eliminada');
+    });
+  } else {
+    removePhoto(id);render();renderSettings();toast('Foto eliminada');
+  }
 }
 function toggleNewCat(){document.getElementById('newCatField').style.display=document.getElementById('newCat').value==='__new__'?'block':'none'}
 function toggleCustomCream(){document.getElementById('customCreamField').style.display=document.getElementById('newPreset').value==='creamCustom'?'block':'none'}
