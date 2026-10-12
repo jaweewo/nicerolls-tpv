@@ -1,0 +1,50 @@
+name: Deploy NiceRolls TPV
+
+on:
+  push:
+    branches: [main, demo]
+
+jobs:
+  deploy-vps:
+    name: Deploy to VPS (main)
+    if: github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy index.html to frontend
+        run: |
+          cp index.html /root/nicerolls-server/frontend/index.html
+
+      - name: Rebuild frontend container
+        run: |
+          cd /root/nicerolls-server
+          docker compose up -d --build frontend
+
+  deploy-pages:
+    name: Deploy to GitHub Pages (demo)
+    if: github.ref == 'refs/heads/demo'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

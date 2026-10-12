@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>NiceRolls TPV v0.9.3 (beta)</title>
+<title>NiceRolls TPV v1.0</title>
 <style>
 /* ── RESET & BASE ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -295,6 +295,34 @@ th{color:#888;font-size:10px;font-weight:700}
 .admin-opt{border:0.5px solid #d8cfc5;background:#f7f3ee;border-radius:10px;padding:12px;text-align:left;font-weight:700;font-size:13px}
 .admin-opt:hover{border-color:#1a2e5a;background:#eef1ff}
 
+/* informes gerencia */
+.inf-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.inf-header select{padding:8px 12px;border:1.5px solid #d8cfc5;border-radius:8px;font-weight:700;font-size:13px}
+.inf-tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1.5px solid #e8e0d5;padding-bottom:8px}
+.inf-tab{border:0;background:none;padding:7px 14px;font-weight:700;font-size:12px;color:#888;border-radius:8px 8px 0 0;cursor:pointer}
+.inf-tab.on{background:#1a2e5a;color:#fff}
+.inf-section{display:none}.inf-section.on{display:block}
+.inf-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.inf-kpi{background:#f7f3ee;border:0.5px solid #d8cfc5;border-radius:10px;padding:12px}
+.inf-kpi small{color:#888;font-weight:700;font-size:10px;display:block;text-transform:uppercase;letter-spacing:.04em}
+.inf-kpi b{font-size:20px;display:block;margin-top:4px;color:#1a2e5a}
+.inf-kpi.green b{color:#2f7d4a}
+.inf-kpi.gold b{color:#b86f20}
+.emp-row{display:grid;grid-template-columns:1fr 80px 100px 90px 90px;gap:6px;align-items:center;padding:8px 10px;border-bottom:0.5px solid #e8e0d5;font-size:12px}
+.emp-row.head{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;background:#f7f3ee;border-radius:8px 8px 0 0;border:none;padding:6px 10px}
+.emp-bar-wrap{height:6px;background:#e8e0d5;border-radius:10px;overflow:hidden;margin-top:3px}
+.emp-bar{height:100%;background:#1a2e5a;border-radius:10px;transition:width .4s}
+.prod-rank-row{display:grid;grid-template-columns:24px 1fr 70px 90px;gap:8px;align-items:center;padding:7px 10px;border-bottom:0.5px solid #e8e0d5;font-size:12px}
+.prod-rank-row.head{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;background:#f7f3ee;border-radius:8px 8px 0 0;border:none}
+.rank-num{font-weight:900;color:#d8cfc5;font-size:14px}
+.rank-num.top{color:#f5c842}
+.day-row{display:grid;grid-template-columns:90px 1fr 80px 80px;gap:8px;align-items:center;padding:6px 10px;border-bottom:0.5px solid #e8e0d5;font-size:12px}
+.day-row.head{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;background:#f7f3ee;border-radius:8px 8px 0 0;border:none}
+.day-bar-wrap{height:8px;background:#e8e0d5;border-radius:10px;overflow:hidden}
+.day-bar{height:100%;background:#2f7d4a;border-radius:10px}
+.inf-empty{text-align:center;padding:24px;color:#aaa;font-size:13px}
+.inf-loading{text-align:center;padding:20px;color:#888;font-size:13px}
+
 /* sold list */
 .sold-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .sold-row{border:0.5px solid #d8cfc5;border-radius:10px;padding:8px;display:flex;justify-content:space-between;align-items:center}
@@ -389,7 +417,7 @@ th{color:#888;font-size:10px;font-weight:700}
 <!-- HEADER -->
 <header>
   <div class="logo">NR</div>
-  <div class="brand">NiceRolls TPV <small>v0.9.3 beta</small></div>
+  <div class="brand">NiceRolls TPV <small>v1.0</small></div>
   <div class="hmet"><span class="hmet-label">Pedidos</span><span class="hmet-val" id="m-count">0</span></div>
   <div class="hmet"><span class="hmet-label">Efectivo</span><span class="hmet-val green" id="m-ef">0,00 €</span></div>
   <div class="hmet"><span class="hmet-label">Tarjeta</span><span class="hmet-val blue" id="m-tj">0,00 €</span></div>
@@ -731,6 +759,7 @@ th{color:#888;font-size:10px;font-weight:700}
       <button class="admin-opt" onclick="adminGo('discounts')">🏷️ Descuentos comerciales</button>
       <button class="admin-opt" onclick="adminGo('backup')">💾 Copia de seguridad</button>
       <button class="admin-opt" onclick="adminGo('users')">👤 Gestión de usuarios</button>
+      <button class="admin-opt" onclick="adminGo('reports')" style="grid-column:1/-1;background:#eef1ff;border-color:#1a2e5a;color:#1a2e5a">📈 Informes de gerencia</button>
     </div>
     <div class="modal-actions"><button class="btn-primary" onclick="closeM('adminM')">Cerrar</button></div>
   </div>
@@ -778,6 +807,53 @@ th{color:#888;font-size:10px;font-weight:700}
       <button class="btn-cancel" onclick="resetCatalog()">Restaurar carta inicial</button>
       <button class="btn-cancel" onclick="importBackup()">Importar JSON</button>
       <button class="btn-primary" onclick="saveSettings()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- INFORMES DE GERENCIA -->
+<div class="overlay" id="reportsM">
+  <div class="modal wide">
+    <h3>📈 Informes de gerencia</h3>
+    <div class="sub">Datos obtenidos de la base de datos del servidor.</div>
+
+    <div class="inf-header">
+      <label style="font-size:12px;font-weight:700;color:#555">MES:</label>
+      <select id="infMonth" onchange="loadReports()"></select>
+      <span id="infStatus" style="font-size:11px;color:#888"></span>
+    </div>
+
+    <div class="inf-tabs">
+      <button class="inf-tab on" onclick="infTab('resumen')">📊 Resumen</button>
+      <button class="inf-tab" onclick="infTab('empleados')">👤 Por empleado</button>
+      <button class="inf-tab" onclick="infTab('productos')">🏆 Productos</button>
+      <button class="inf-tab" onclick="infTab('dias')">📅 Por día</button>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="inf-section on" id="inf-resumen">
+      <div class="inf-kpis" id="infKpis"><div class="inf-loading">Cargando…</div></div>
+      <div id="infResumenExtra"></div>
+    </div>
+
+    <!-- POR EMPLEADO -->
+    <div class="inf-section" id="inf-empleados">
+      <div id="infEmpleados"><div class="inf-loading">Cargando…</div></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="inf-section" id="inf-productos">
+      <div id="infProductos"><div class="inf-loading">Cargando…</div></div>
+    </div>
+
+    <!-- POR DÍA -->
+    <div class="inf-section" id="inf-dias">
+      <div id="infDias"><div class="inf-loading">Cargando…</div></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeM('reportsM')">Cerrar</button>
+      <button class="btn-primary" onclick="exportReportsCSV()">⬇ Exportar CSV</button>
     </div>
   </div>
 </div>
@@ -1655,7 +1731,7 @@ function deleteDiscountConfig(i){if(confirm('¿Eliminar este descuento?')){store
 
 // ── SETTINGS ──
 function openAdmin(){requireAdmin(()=>{document.getElementById('adminPinNote').textContent=store.adminPin||'1234';openM('adminM')})}
-function adminGo(a){closeM('adminM');if(a==='close')openClose();if(a==='settings')openSettings();if(a==='sales')openSales();if(a==='stock')openStock();if(a==='allergens')openAllergenEditor();if(a==='discounts')openDiscountAdmin();if(a==='backup')exportBackup();if(a==='users')openUsersAdmin()}
+function adminGo(a){closeM('adminM');if(a==='close')openClose();if(a==='settings')openSettings();if(a==='sales')openSales();if(a==='stock')openStock();if(a==='allergens')openAllergenEditor();if(a==='discounts')openDiscountAdmin();if(a==='backup')exportBackup();if(a==='users')openUsersAdmin();if(a==='reports')openReports()}
 function openSettings(){document.getElementById('storeName').value=store.name;document.getElementById('float').value=store.openingFloat||0;document.getElementById('pin').value=store.adminPin||'1234';document.getElementById('target').value=store.horcusTarget||50;fillCats();renderSettings();openM('settingsM')}
 function fillCats(){let c=cats();document.getElementById('catList').innerHTML=c.map(x=>`<option value="${esc(x)}">`).join('');document.getElementById('newCat').innerHTML=c.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__new__">+ Crear nuevo apartado…</option>'}
 function renderSettings(){
@@ -1756,6 +1832,267 @@ document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)o
 
 // ── INIT ──
 render();
+
+// ══════════════════════════════════════════════════════════
+// INFORMES DE GERENCIA v1.0
+// ══════════════════════════════════════════════════════════
+
+let _infData = null; // cache de datos del mes seleccionado
+
+function openReports(){
+  _buildMonthSelector();
+  openM('reportsM');
+  loadReports();
+}
+
+function _buildMonthSelector(){
+  const sel = document.getElementById('infMonth');
+  if(sel.options.length) return; // ya construido
+  const now = new Date();
+  for(let i=0; i<12; i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('es-ES',{year:'numeric',month:'long'});
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    sel.appendChild(opt);
+  }
+}
+
+function infTab(tab){
+  document.querySelectorAll('.inf-tab').forEach((b,i)=>{
+    const tabs=['resumen','empleados','productos','dias'];
+    b.classList.toggle('on', tabs[i]===tab);
+  });
+  document.querySelectorAll('.inf-section').forEach(s=>s.classList.remove('on'));
+  document.getElementById('inf-'+tab).classList.add('on');
+}
+
+async function loadReports(){
+  const month = document.getElementById('infMonth').value;
+  document.getElementById('infStatus').textContent = 'Cargando…';
+  _infData = null;
+
+  if(API_BASE){
+    // Obtener todas las ventas del mes desde la API
+    const sales = await _fetchMonthlySales(month);
+    if(!sales){
+      document.getElementById('infStatus').textContent = '⚠ Sin datos o sin conexión';
+      _renderEmpty();
+      return;
+    }
+    _infData = _processSales(sales, month);
+  } else {
+    // Modo localStorage — procesar ventas locales
+    const allSales = [];
+    Object.entries(sales||{}).forEach(([dk, daySales])=>{
+      if(dk.startsWith(month) && Array.isArray(daySales)){
+        daySales.filter(s=>!s.voided).forEach(s=>allSales.push({...s, day_key:dk}));
+      }
+    });
+    _infData = _processSales(allSales, month);
+  }
+
+  document.getElementById('infStatus').textContent =
+    `${_infData.totalTickets} tickets · ${money(_infData.totalRevenue)}`;
+  _renderResumen();
+  _renderEmpleados();
+  _renderProductos();
+  _renderDias();
+}
+
+async function _fetchMonthlySales(month){
+  if(!API_BASE||!_apiToken) return null;
+  try {
+    // Obtener ventas día a día del mes
+    const [year, mon] = month.split('-').map(Number);
+    const daysInMonth = new Date(year, mon, 0).getDate();
+    const allSales = [];
+    // Hacer una sola petición con limit alto filtrando por mes
+    const r = await fetch(`${API_BASE}/sales?limit=1000`, {
+      headers:{'Authorization':'Bearer '+_apiToken}
+    });
+    if(!r.ok) return null;
+    const data = await r.json();
+    return data.filter(s => s.day_key && s.day_key.startsWith(month));
+  } catch(e){ return null; }
+}
+
+function _processSales(rawSales, month){
+  const byEmployee = {};
+  const byProduct  = {};
+  const byDay      = {};
+
+  let totalRevenue = 0, totalTickets = 0, totalCash = 0, totalCard = 0, totalDiscount = 0;
+
+  rawSales.forEach(s=>{
+    const total    = Number(s.total||0);
+    const discount = Number(s.discount||s.discountAmount||0);
+    const method   = s.pay_method||s.method||'cash';
+    const employee = s.employee||'(sin usuario)';
+    const dk       = s.day_key||s.ts?.slice(0,10)||month+'-01';
+
+    totalRevenue  += total;
+    totalTickets  += 1;
+    totalDiscount += discount;
+    if(method==='card') totalCard += total;
+    else if(method==='mixed'||method==='split'){ totalCash += Number(s.cash_given||s.cashAmount||0); totalCard += Number(s.card_amount||s.cardAmount||0); }
+    else totalCash += total;
+
+    // Por empleado
+    if(!byEmployee[employee]) byEmployee[employee]={tickets:0,revenue:0,cash:0,card:0};
+    byEmployee[employee].tickets  += 1;
+    byEmployee[employee].revenue  += total;
+    if(method==='card') byEmployee[employee].card += total;
+    else byEmployee[employee].cash += total;
+
+    // Por producto
+    const items = s.items||[];
+    items.forEach(item=>{
+      const name = item.name||item.id||'?';
+      const qty  = Number(item.qty||1);
+      const rev  = Number(item.unitPrice||item.price||0)*qty;
+      if(!byProduct[name]) byProduct[name]={qty:0,revenue:0};
+      byProduct[name].qty     += qty;
+      byProduct[name].revenue += rev;
+    });
+
+    // Por día
+    if(!byDay[dk]) byDay[dk]={tickets:0,revenue:0};
+    byDay[dk].tickets += 1;
+    byDay[dk].revenue += total;
+  });
+
+  return {
+    month, totalRevenue, totalTickets, totalCash, totalCard, totalDiscount,
+    avgTicket: totalTickets ? totalRevenue/totalTickets : 0,
+    byEmployee, byProduct, byDay
+  };
+}
+
+function _renderEmpty(){
+  ['infKpis','infEmpleados','infProductos','infDias'].forEach(id=>{
+    document.getElementById(id).innerHTML=`<div class="inf-empty">Sin ventas para este período.</div>`;
+  });
+  document.getElementById('infResumenExtra').innerHTML='';
+}
+
+function _renderResumen(){
+  const d = _infData;
+  if(!d){_renderEmpty();return}
+  document.getElementById('infKpis').innerHTML=`
+    <div class="inf-kpi"><small>Total facturado</small><b>${money(d.totalRevenue)}</b></div>
+    <div class="inf-kpi green"><small>Tickets</small><b>${d.totalTickets}</b></div>
+    <div class="inf-kpi gold"><small>Ticket medio</small><b>${money(d.avgTicket)}</b></div>
+    <div class="inf-kpi"><small>Descuentos aplicados</small><b>${money(d.totalDiscount)}</b></div>
+  `;
+  document.getElementById('infResumenExtra').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <div class="caja-card">
+        <h4>Desglose por método de pago</h4>
+        <div class="caja-row"><span>Efectivo</span><span class="caja-row-val">${money(d.totalCash)}</span></div>
+        <div class="caja-row"><span>Tarjeta</span><span class="caja-row-val">${money(d.totalCard)}</span></div>
+        <div class="caja-total"><span>Total</span><span class="caja-total-val pos">${money(d.totalRevenue)}</span></div>
+      </div>
+      <div class="caja-card">
+        <h4>Actividad</h4>
+        <div class="caja-row"><span>Días con ventas</span><span class="caja-row-val">${Object.keys(d.byDay).length}</span></div>
+        <div class="caja-row"><span>Empleados activos</span><span class="caja-row-val">${Object.keys(d.byEmployee).length}</span></div>
+        <div class="caja-row"><span>Productos distintos</span><span class="caja-row-val">${Object.keys(d.byProduct).length}</span></div>
+        <div class="caja-row"><span>% en tarjeta</span><span class="caja-row-val">${d.totalRevenue>0?(d.totalCard/d.totalRevenue*100).toFixed(1)+'%':'—'}</span></div>
+      </div>
+    </div>`;
+}
+
+function _renderEmpleados(){
+  const d = _infData;
+  if(!d||!Object.keys(d.byEmployee).length){
+    document.getElementById('infEmpleados').innerHTML=`<div class="inf-empty">Sin datos de empleados.</div>`;return;
+  }
+  const maxRev = Math.max(...Object.values(d.byEmployee).map(e=>e.revenue));
+  const sorted = Object.entries(d.byEmployee).sort((a,b)=>b[1].revenue-a[1].revenue);
+  let html=`<div class="emp-row head"><span>Empleado</span><span>Tickets</span><span>Facturado</span><span>T. Medio</span><span>% Efectivo</span></div>`;
+  sorted.forEach(([name,e])=>{
+    const avg  = e.tickets ? e.revenue/e.tickets : 0;
+    const pct  = e.revenue>0 ? (e.cash/e.revenue*100).toFixed(0) : 0;
+    const barW = maxRev>0 ? (e.revenue/maxRev*100).toFixed(1) : 0;
+    html+=`<div class="emp-row">
+      <div><b>${esc(name)}</b><div class="emp-bar-wrap"><div class="emp-bar" style="width:${barW}%"></div></div></div>
+      <span>${e.tickets}</span>
+      <span style="font-weight:700;color:#1a2e5a">${money(e.revenue)}</span>
+      <span>${money(avg)}</span>
+      <span>${pct}%</span>
+    </div>`;
+  });
+  document.getElementById('infEmpleados').innerHTML=`<div style="border:0.5px solid #e8e0d5;border-radius:10px;overflow:hidden">${html}</div>`;
+}
+
+function _renderProductos(){
+  const d = _infData;
+  if(!d||!Object.keys(d.byProduct).length){
+    document.getElementById('infProductos').innerHTML=`<div class="inf-empty">Sin datos de productos.</div>`;return;
+  }
+  const sorted = Object.entries(d.byProduct).sort((a,b)=>b[1].qty-a[1].qty).slice(0,20);
+  let html=`<div class="prod-rank-row head"><span>#</span><span>Producto</span><span>Uds.</span><span>Facturado</span></div>`;
+  sorted.forEach(([name,p],i)=>{
+    html+=`<div class="prod-rank-row">
+      <span class="rank-num ${i<3?'top':''}">${i+1}</span>
+      <span>${esc(name)}</span>
+      <span style="font-weight:700">${p.qty}</span>
+      <span>${money(p.revenue)}</span>
+    </div>`;
+  });
+  document.getElementById('infProductos').innerHTML=`<div style="border:0.5px solid #e8e0d5;border-radius:10px;overflow:hidden">${html}</div>`;
+}
+
+function _renderDias(){
+  const d = _infData;
+  if(!d||!Object.keys(d.byDay).length){
+    document.getElementById('infDias').innerHTML=`<div class="inf-empty">Sin datos por día.</div>`;return;
+  }
+  const maxRev = Math.max(...Object.values(d.byDay).map(x=>x.revenue));
+  const sorted = Object.entries(d.byDay).sort((a,b)=>a[0].localeCompare(b[0]));
+  let html=`<div class="day-row head"><span>Fecha</span><span>Ventas</span><span>Tickets</span><span>T. Medio</span></div>`;
+  sorted.forEach(([dk,day])=>{
+    const avg  = day.tickets ? day.revenue/day.tickets : 0;
+    const barW = maxRev>0 ? (day.revenue/maxRev*100).toFixed(1) : 0;
+    const fecha= new Date(dk+'T12:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+    html+=`<div class="day-row">
+      <span style="font-weight:700">${fecha}</span>
+      <div><div class="day-bar-wrap"><div class="day-bar" style="width:${barW}%"></div></div><small style="font-size:10px;color:#2f7d4a;font-weight:700">${money(day.revenue)}</small></div>
+      <span>${day.tickets}</span>
+      <span>${money(avg)}</span>
+    </div>`;
+  });
+  document.getElementById('infDias').innerHTML=`<div style="border:0.5px solid #e8e0d5;border-radius:10px;overflow:hidden">${html}</div>`;
+}
+
+function exportReportsCSV(){
+  const d = _infData;
+  if(!d){toast('Sin datos para exportar');return}
+  const month = document.getElementById('infMonth').value;
+  let csv = `Informe NiceRolls · ${month}\n\n`;
+
+  csv += `RESUMEN\nTotal facturado;${d.totalRevenue.toFixed(2)}\nTickets;${d.totalTickets}\nTicket medio;${d.avgTicket.toFixed(2)}\nEfectivo;${d.totalCash.toFixed(2)}\nTarjeta;${d.totalCard.toFixed(2)}\nDescuentos;${d.totalDiscount.toFixed(2)}\n\n`;
+
+  csv += `POR EMPLEADO\nEmpleado;Tickets;Facturado;Ticket medio\n`;
+  Object.entries(d.byEmployee).sort((a,b)=>b[1].revenue-a[1].revenue).forEach(([n,e])=>{
+    csv += `${n};${e.tickets};${e.revenue.toFixed(2)};${e.tickets?( e.revenue/e.tickets).toFixed(2):'0'}\n`;
+  });
+
+  csv += `\nTOP PRODUCTOS\nProducto;Unidades;Facturado\n`;
+  Object.entries(d.byProduct).sort((a,b)=>b[1].qty-a[1].qty).forEach(([n,p])=>{
+    csv += `${n};${p.qty};${p.revenue.toFixed(2)}\n`;
+  });
+
+  csv += `\nPOR DÍA\nFecha;Tickets;Facturado\n`;
+  Object.entries(d.byDay).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dk,day])=>{
+    csv += `${dk};${day.tickets};${day.revenue.toFixed(2)}\n`;
+  });
+
+  download(csv.replace(/\./g,','), `NiceRolls_informe_${month}.csv`, 'text/csv;charset=utf-8;');
+  toast('CSV exportado');
+}
 </script>
 </body>
 </html>
